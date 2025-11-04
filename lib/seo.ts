@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 const title = 'Watercooler | Shared Memory for AI Agents & Teams';
 const description =
   'Watercooler mirrors every branch, pull request, and agent hand-off into durable threads so humans and AI copilots can collaborate with reliable context.';
-const siteUrl = 'https://watercooler-dev.com';
+const siteUrl = 'https://watercoolerdev.com';
 
 export const seoConfig: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -37,4 +37,3 @@ export const seoConfig: Metadata = {
     images: [`${siteUrl}/api/og`],
   },
 };
-
