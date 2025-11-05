@@ -32,35 +32,33 @@ export const urls = {
 
 export const copy: Copy = {
   hero: {
-    headline: 'Shared memory for your AI agents and human teammates.',
+    headline: 'Watercooler: The shared memory protocol for agents and humans.',
     subheadline:
-      'Watercooler keeps long-running product work organized in durable threads so AI agents, operators, and customers stay aligned.',
+      'A collaboration layer where humans and AI agents share context, coordinate work, and persist decisions.',
     primaryCta: 'Open GitHub repo',
   },
   problem: {
     bullets: [
       {
-        title: 'Context resets break momentum',
-        description:
-          'Most dev loops lose the conversation every time you hand work between agents or humans, forcing everyone to rebuild understanding.',
+        title: 'Context loss',
+        description: 'Agents forget prior decisions and constraints.',
       },
       {
-        title: 'Knowledge fragments across tools',
-        description:
-          'Specs live in docs, progress hides in chat, commits ship without history, making audits and onboarding painful.',
+        title: 'Handoff chaos',
+        description: 'Work breaks across agent boundaries.',
       },
       {
-        title: 'No audit trail for agent work',
-        description:
-          'Teams can’t verify who did what, when, or why—blocking adoption of AI copilots in regulated or multi-stakeholder environments.',
+        title: 'No shared memory',
+        description: 'Chat logs aren't collaboration artifacts.',
       },
     ],
   },
   solution: {
     bullets: [
-      'Durable threads mirror every branch so work stays inspectable and searchable forever.',
-      'Structured handoffs capture status, assignees, and decisions—no more guesswork between humans and agents.',
-      'Lightweight APIs let your MCP servers or bespoke bots plug in without re-architecting your stack.',
+      'Structured threads instead of ephemeral chat',
+      'Roles & status (OPEN → IN_REVIEW → CLOSED)',
+      'Built on MCP & Git for real code context',
+      'Decision graph across agents & repos',
     ],
   },
   quickstart: {
