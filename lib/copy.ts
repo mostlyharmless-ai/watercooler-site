@@ -49,7 +49,7 @@ export const copy: Copy = {
       },
       {
         title: 'No shared memory',
-        description: 'Chat logs aren't collaboration artifacts.',
+        description: "Chat logs aren't collaboration artifacts.",
       },
     ],
   },
