@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://watercooler.dev/sitemap.xml
+Sitemap: https://watercoolerdev.com/sitemap.xml

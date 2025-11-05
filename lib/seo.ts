@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
-const title = 'Watercooler | Shared Memory for AI Agents & Teams';
+const title = 'Watercooler: The shared memory protocol for agents and humans';
 const description =
-  'Watercooler mirrors every branch, pull request, and agent hand-off into durable threads so humans and AI copilots can collaborate with reliable context.';
+  'A collaboration layer where humans and AI agents share context, coordinate work, and persist decisions. Built on MCP & Git for real code context.';
 const siteUrl = 'https://watercoolerdev.com';
 
 export const seoConfig: Metadata = {
@@ -22,7 +22,7 @@ export const seoConfig: Metadata = {
         url: `${siteUrl}/api/og`,
         width: 1200,
         height: 630,
-        alt: 'Watercooler – Shared memory for agents and teams',
+        alt: 'Watercooler: The shared memory protocol for agents and humans',
       },
     ],
     locale: 'en_US',
