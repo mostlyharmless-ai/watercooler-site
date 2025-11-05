@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import { seoConfig } from '@/lib/seo';
+import StructuredData from '@/components/StructuredData';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -26,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${ibmPlexMono.variable}`}>
       <body>
+        <StructuredData />
         {children}
       </body>
     </html>
