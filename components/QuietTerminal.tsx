@@ -61,24 +61,20 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
     if (!isPlaying || currentLineIndex >= lines.length) return;
 
     const currentLine = lines[currentLineIndex];
+    const isBallFlip = currentLine.includes('Ball →');
+    const isAgentEntry = currentLine.includes('[CODEX]') || currentLine.includes('[CLAUDE]');
+    const isCommand = currentLine.startsWith('$');
 
-    if (displayedText.length < currentLine.length) {
-      const timeout = setTimeout(() => {
-        setDisplayedText(currentLine.substring(0, displayedText.length + 1));
-      }, 35);
-      return () => clearTimeout(timeout);
-    } else {
-      const isBallFlip = currentLine.includes('Ball →');
-      const timeout = setTimeout(
-        () => {
-          setCurrentLineIndex(currentLineIndex + 1);
-          setDisplayedText('');
-        },
-        isBallFlip ? 700 : 150
-      );
-      return () => clearTimeout(timeout);
-    }
-  }, [currentLineIndex, displayedText, isPlaying, lines, prefersReducedMotion, open]);
+    // Line-by-line scrolling - show entire line at once
+    const delay = isBallFlip ? 700 : isAgentEntry ? 400 : isCommand ? 200 : 150;
+
+    const timeout = setTimeout(() => {
+      setCurrentLineIndex(currentLineIndex + 1);
+      setDisplayedText('');
+    }, delay);
+
+    return () => clearTimeout(timeout);
+  }, [currentLineIndex, isPlaying, lines, prefersReducedMotion, open]);
 
   useEffect(() => {
     setCurrentLineIndex(0);
@@ -96,12 +92,41 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
   const visibleLines = displayedLines.slice(-maxVisibleLines);
 
   const isBallFlipLine = (line: string) => line.includes('Ball →');
-  
+  const isAgentLine = (line: string) => line.includes('[CODEX]') || line.includes('[CLAUDE]');
+  const isCodexLine = (line: string) => line.includes('[CODEX]');
+  const isClaudeLine = (line: string) => line.includes('[CLAUDE]');
+
   const getLineClass = (line: string) => {
     if (line.startsWith('#')) return 'line-comment';
     if (line.includes('Ball →')) return 'line-ball';
-    if (line.startsWith('Status:') || line.startsWith('Found:') || line.includes('Thread persisted:') || line.includes('Searchable history')) return 'line-status';
+    if (line.startsWith('Status:') || line.startsWith('Topic:')) return 'line-status';
+    if (line.startsWith('---')) return 'line-separator';
+    if (isAgentLine(line)) return 'line-agent';
     return '';
+  };
+
+  const formatLine = (line: string) => {
+    // Color-code [CODEX] in amber/yellow
+    if (line.includes('[CODEX]')) {
+      const parts = line.split('[CODEX]');
+      return (
+        <>
+          <span className="text-amber-400 font-semibold">[CODEX]</span>
+          <span className="text-secondary">{parts[1]}</span>
+        </>
+      );
+    }
+    // Color-code [CLAUDE] in cyan/blue
+    if (line.includes('[CLAUDE]')) {
+      const parts = line.split('[CLAUDE]');
+      return (
+        <>
+          <span className="text-cyan-400 font-semibold">[CLAUDE]</span>
+          <span className="text-secondary">{parts[1]}</span>
+        </>
+      );
+    }
+    return line;
   };
   
   const currentCaption = captions[currentSceneId] || '';
@@ -143,6 +168,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
               const isCommand = line.startsWith('$');
               const isBallFlip = isBallFlipLine(line);
               const lineClass = getLineClass(line);
+              const displayContent = line.replace('$ ', '');
 
               return (
                 <motion.div
@@ -161,7 +187,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                   )}
                   {isCommand && <span className="text-accent shrink-0">$</span>}
                   <span className={isCommand ? 'text-primary' : 'text-secondary pl-3'}>
-                    {line.replace('$ ', '')}
+                    {formatLine(displayContent)}
                   </span>
                 </motion.div>
               );
@@ -179,7 +205,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                 )}
                 {lines[currentLineIndex].startsWith('$') && <span className="text-accent shrink-0">$</span>}
                 <span className={lines[currentLineIndex].startsWith('$') ? 'text-primary' : 'text-secondary pl-3'}>
-                  {displayedText.replace('$ ', '')}
+                  {formatLine(displayedText.replace('$ ', ''))}
                 </span>
                 {!prefersReducedMotion && isPlaying && (
                   <motion.span
