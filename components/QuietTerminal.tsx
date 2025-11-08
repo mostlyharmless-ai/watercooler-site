@@ -349,21 +349,25 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                               h2: ({node, ...props}) => <h2 className="text-base font-semibold text-primary mt-3 mb-2" {...props} />,
                               h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-primary mt-2 mb-1" {...props} />,
                               p: ({node, ...props}) => <p style={{ marginBottom: '0.75rem' }} {...props} />,
-                              code: ({node, inline, ...props}: any) =>
-                                inline ? (
-                                  <code
-                                    style={{
-                                      display: 'inline',
-                                      background: 'rgba(15, 23, 42, 0.08)',
-                                      padding: '0.125rem 0.375rem',
-                                      borderRadius: '0.25rem',
-                                      fontSize: '0.85em',
-                                      fontFamily: 'monospace',
-                                      whiteSpace: 'nowrap'
-                                    }}
-                                    {...props}
-                                  />
-                                ) : (
+                              code: ({node, inline, ...props}: any) => {
+                                const isInline = inline !== undefined ? inline : true;
+                                if (isInline) {
+                                  return (
+                                    <code
+                                      style={{
+                                        display: 'inline',
+                                        background: 'rgba(15, 23, 42, 0.08)',
+                                        padding: '0.125rem 0.375rem',
+                                        borderRadius: '0.25rem',
+                                        fontSize: '0.85em',
+                                        fontFamily: 'monospace',
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                      {...props}
+                                    />
+                                  );
+                                }
+                                return (
                                   <code
                                     style={{
                                       display: 'block',
@@ -378,7 +382,8 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                                     }}
                                     {...props}
                                   />
-                                ),
+                                );
+                              },
                               ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.25rem', marginBottom: '0.75rem' }} {...props} />,
                               ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.25rem', marginBottom: '0.75rem' }} {...props} />,
                               li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem' }} {...props} />,
