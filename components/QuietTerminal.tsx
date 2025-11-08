@@ -88,8 +88,8 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
     const bodyLines = currentEntry.body.split('\n');
 
     if (currentLineIndex < bodyLines.length) {
-      // Random delay between 200ms and 333ms (3-5 lines per second)
-      const delay = Math.floor(Math.random() * 134) + 200; // 200-333ms
+      // Random delay between 111ms and 200ms (5-9 lines per second)
+      const delay = Math.floor(Math.random() * 90) + 111; // 111-200ms
 
       const timeout = setTimeout(() => {
         setCurrentLineIndex(currentLineIndex + 1);
@@ -191,8 +191,11 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
               <h3 className="text-lg font-semibold text-primary" style={{ marginBottom: '0.25rem' }}>
                 Live Thread Collaboration
               </h3>
-              <p className="text-sm text-secondary">
+              <p className="text-sm text-secondary" style={{ marginBottom: '0.25rem' }}>
                 Real threads from watercooler-cloud development
+              </p>
+              <p className="text-sm text-secondary">
+                If you decide to build on watercooler repo, these threads will get your agent up to speed in seconds.
               </p>
             </div>
 

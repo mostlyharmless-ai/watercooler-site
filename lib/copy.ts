@@ -81,7 +81,7 @@ pip install -e .[mcp]`,
     dashboard: `python -m watercooler_dashboard.local_app`,
   },
   footer: {
-    tagline: 'Watercooler — persistent shared memory for product teams.',
+    tagline: 'Watercooler: Multi-Agent Collaboration Protocol',
   },
 };
 
