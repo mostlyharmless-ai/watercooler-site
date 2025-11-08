@@ -353,11 +353,13 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                                 inline ? (
                                   <code
                                     style={{
+                                      display: 'inline',
                                       background: 'rgba(15, 23, 42, 0.08)',
                                       padding: '0.125rem 0.375rem',
                                       borderRadius: '0.25rem',
                                       fontSize: '0.85em',
-                                      fontFamily: 'monospace'
+                                      fontFamily: 'monospace',
+                                      whiteSpace: 'nowrap'
                                     }}
                                     {...props}
                                   />
