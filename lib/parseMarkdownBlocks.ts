@@ -100,14 +100,15 @@ export function parseMarkdownBlocks(markdown: string): string[] {
       continue;
     }
 
-    // Paragraph - collect until blank line
+    // Paragraph - split into individual lines for gradual reveal
     const paraLines = [line];
     i++;
     while (i < lines.length && lines[i].trim() !== '' && !lines[i].match(/^#{1,6}\s/) && !lines[i].match(/^(\s*)[-*+]\s/) && !lines[i].match(/^(\s*)\d+\.\s/) && !lines[i].trim().startsWith('```')) {
       paraLines.push(lines[i]);
       i++;
     }
-    blocks.push(paraLines.join('\n'));
+    // Push each line as a separate block for varied timing
+    paraLines.forEach(paraLine => blocks.push(paraLine));
   }
 
   return blocks;

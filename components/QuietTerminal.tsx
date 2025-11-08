@@ -89,8 +89,8 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
     const bodyBlocks = parseMarkdownBlocks(currentEntry.body);
 
     if (currentBlockIndex < bodyBlocks.length) {
-      // Random delay between 111ms and 200ms (5-9 blocks per second)
-      const delay = Math.floor(Math.random() * 90) + 111; // 111-200ms
+      // Random delay between 100ms and 400ms (2.5-10 blocks per second)
+      const delay = Math.floor(Math.random() * 301) + 100; // 100-400ms
 
       const timeout = setTimeout(() => {
         setCurrentBlockIndex(currentBlockIndex + 1);
