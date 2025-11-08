@@ -1,225 +1,416 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import Section from './Section';
-import { terminalScenes, TerminalScene, captions } from '@/lib/terminalScenes';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import threadsData from '@/lib/generatedThreads.json';
 
 interface QuietTerminalProps {
   open: boolean;
   onClose: () => void;
 }
 
+interface ThreadEntry {
+  author: string;
+  role: string;
+  type: string;
+  title: string;
+  body: string;
+  timestamp: string;
+  isCodex: boolean;
+  isClaude: boolean;
+}
+
+interface Thread {
+  id: string;
+  title: string;
+  status?: string;
+  ball?: string;
+  topic?: string;
+  created?: string;
+  priority?: string;
+  entries: ThreadEntry[];
+}
+
 export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
-  const [currentSceneId, setCurrentSceneId] = useState('handoff-workflow');
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const [displayedText, setDisplayedText] = useState('');
+  const [currentThreadId, setCurrentThreadId] = useState(threadsData[0]?.id || '');
+  const [currentEntryIndex, setCurrentEntryIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastEntryRef = useRef<HTMLDivElement>(null);
 
-  const currentScene = terminalScenes.find((s: TerminalScene) => s.id === currentSceneId) || terminalScenes[0];
-  const lines = currentScene.lines;
-  const maxVisibleLines = 8;
+  const threads = threadsData as Thread[];
+  const currentThread = threads.find((t: Thread) => t.id === currentThreadId) || threads[0];
+  const entries = currentThread?.entries || [];
 
+  // Reset when opening or changing threads
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
+    if (open) {
+      setCurrentEntryIndex(0);
+      setIsPlaying(true);
+    }
+  }, [open, currentThreadId]);
 
-    const handleChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
+  // Scroll animation - wait until content reaches BOTTOM before scrolling
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) {
+    if (!scrollContainerRef.current || !lastEntryRef.current) return;
+
+    const container = scrollContainerRef.current;
+    const lastEntry = lastEntryRef.current;
+
+    // Check if last entry has reached the bottom of viewport
+    const containerRect = container.getBoundingClientRect();
+    const entryRect = lastEntry.getBoundingClientRect();
+
+    // Only scroll if the bottom of the last entry is below the bottom of the container
+    if (entryRect.bottom > containerRect.bottom) {
+      lastEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [currentEntryIndex]);
+
+  // Entry playback with 2.5 second pause between entries
+  useEffect(() => {
+    if (!isPlaying || !open || currentEntryIndex >= entries.length) return;
+
+    const timeout = setTimeout(() => {
+      setCurrentEntryIndex(currentEntryIndex + 1);
+    }, 2500); // 2.5 second pause between entries
+
+    return () => clearTimeout(timeout);
+  }, [currentEntryIndex, isPlaying, entries.length, open]);
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) return;
+
+      if (e.key === 'Escape') {
         onClose();
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        setIsPlaying(!isPlaying);
+      } else if (e.key === 'ArrowRight' && currentEntryIndex < entries.length) {
+        e.preventDefault();
+        setCurrentEntryIndex(currentEntryIndex + 1);
+      } else if (e.key === 'ArrowLeft' && currentEntryIndex > 0) {
+        e.preventDefault();
+        setCurrentEntryIndex(currentEntryIndex - 1);
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [open, onClose]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose, isPlaying, currentEntryIndex, entries.length]);
 
-  useEffect(() => {
-    if (!open) {
-      setCurrentLineIndex(0);
-      setDisplayedText('');
-      setIsPlaying(true);
-      return;
-    }
-
-    if (prefersReducedMotion) {
-      setCurrentLineIndex(lines.length);
-      setDisplayedText('');
-      return;
-    }
-
-    if (!isPlaying || currentLineIndex >= lines.length) return;
-
-    const currentLine = lines[currentLineIndex];
-    const isBallFlip = currentLine.includes('Ball →');
-    const isAgentEntry = currentLine.includes('[CODEX]') || currentLine.includes('[CLAUDE]');
-    const isCommand = currentLine.startsWith('$');
-
-    // Line-by-line scrolling - show entire line at once
-    const delay = isBallFlip ? 700 : isAgentEntry ? 400 : isCommand ? 200 : 150;
-
-    const timeout = setTimeout(() => {
-      setCurrentLineIndex(currentLineIndex + 1);
-      setDisplayedText('');
-    }, delay);
-
-    return () => clearTimeout(timeout);
-  }, [currentLineIndex, isPlaying, lines, prefersReducedMotion, open]);
-
-  useEffect(() => {
-    setCurrentLineIndex(0);
-    setDisplayedText('');
+  const handleThreadChange = (threadId: string) => {
+    setCurrentThreadId(threadId);
+    setCurrentEntryIndex(0);
     setIsPlaying(true);
-  }, [currentSceneId]);
-
-  const handleSceneChange = (sceneId: string) => {
-    setCurrentSceneId(sceneId);
   };
 
   if (!open) return null;
 
-  const displayedLines = lines.slice(0, currentLineIndex);
-  const visibleLines = displayedLines.slice(-maxVisibleLines);
-
-  const isBallFlipLine = (line: string) => line.includes('Ball →');
-  const isAgentLine = (line: string) => line.includes('[CODEX]') || line.includes('[CLAUDE]');
-  const isCodexLine = (line: string) => line.includes('[CODEX]');
-  const isClaudeLine = (line: string) => line.includes('[CLAUDE]');
-
-  const getLineClass = (line: string) => {
-    if (line.startsWith('#')) return 'line-comment';
-    if (line.includes('Ball →')) return 'line-ball';
-    if (line.startsWith('Status:') || line.startsWith('Topic:')) return 'line-status';
-    if (line.startsWith('---')) return 'line-separator';
-    if (isAgentLine(line)) return 'line-agent';
-    return '';
-  };
-
-  const formatLine = (line: string) => {
-    // Color-code [CODEX] in amber/yellow
-    if (line.includes('[CODEX]')) {
-      const parts = line.split('[CODEX]');
-      return (
-        <>
-          <span className="text-amber-400 font-semibold">[CODEX]</span>
-          <span className="text-secondary">{parts[1]}</span>
-        </>
-      );
-    }
-    // Color-code [CLAUDE] in cyan/blue
-    if (line.includes('[CLAUDE]')) {
-      const parts = line.split('[CLAUDE]');
-      return (
-        <>
-          <span className="text-cyan-400 font-semibold">[CLAUDE]</span>
-          <span className="text-secondary">{parts[1]}</span>
-        </>
-      );
-    }
-    return line;
-  };
-  
-  const currentCaption = captions[currentSceneId] || '';
+  const displayedEntries = entries.slice(0, currentEntryIndex + 1);
 
   return (
-    <Section className="py-12 md:py-16">
-      {currentCaption && (
-        <div className="text-center mb-6 text-secondary text-sm md:text-base max-w-2xl mx-auto">
-          {currentCaption}
-        </div>
-      )}
-      <div className="mx-auto w-full rounded-xl ring-1 ring-border bg-surface shadow-md group">
-        <div className="flex items-center justify-between px-6 py-3 border-b border-border/50">
-          <div className="text-xs text-secondary font-medium">Terminal Demo</div>
-          <div className="flex items-center gap-2">
+    <div style={{ marginTop: '3rem', marginBottom: '5rem', padding: '0 1.5rem' }}>
+      <div style={{ maxWidth: '56rem', margin: '0 auto' }}>
+        {/* Clean card matching Get Started aesthetic */}
+        <div
+          className="card-hover"
+          style={{
+            background: '#FFFFFF',
+            borderRadius: '1rem',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
+            transition: 'all 0.3s ease',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Header with thread selector */}
+          <div
+            style={{
+              padding: '1.5rem 2rem',
+              borderBottom: '1px solid rgba(15, 23, 42, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              flexWrap: 'wrap'
+            }}
+          >
+            <div>
+              <h3 className="text-lg font-semibold text-primary" style={{ marginBottom: '0.25rem' }}>
+                Live Thread Collaboration
+              </h3>
+              <p className="text-sm text-secondary">
+                Real threads from watercooler-cloud development
+              </p>
+            </div>
+
             <select
-              value={currentSceneId}
-              onChange={(e) => handleSceneChange(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-md ring-1 ring-border bg-background text-primary cursor-pointer hover:ring-accent transition-colors"
+              value={currentThreadId}
+              onChange={(e) => handleThreadChange(e.target.value)}
+              className="text-sm px-3 py-2 rounded-md border border-border bg-background text-primary cursor-pointer hover:border-accent transition-colors"
+              style={{ minWidth: '200px' }}
             >
-              {terminalScenes.map((scene: TerminalScene) => (
-                <option key={scene.id} value={scene.id}>
-                  {scene.title}
+              {threads.map((thread: Thread) => (
+                <option key={thread.id} value={thread.id}>
+                  {thread.title}
                 </option>
               ))}
             </select>
           </div>
-        </div>
 
-        <div
-          className="relative h-[300px] md:h-[350px] overflow-hidden"
-          style={{
-            maskImage: 'linear-gradient(to bottom, #000, #000 92%, transparent)',
-            WebkitMaskImage: 'linear-gradient(to bottom, #000, #000 92%, transparent)',
-          }}
-        >
-          <div className="p-8 space-y-2 leading-relaxed font-mono text-sm">
-            {visibleLines.map((line: string, index: number) => {
-              const isCommand = line.startsWith('$');
-              const isBallFlip = isBallFlipLine(line);
-              const lineClass = getLineClass(line);
-              const displayContent = line.replace('$ ', '');
+          {/* Thread metadata */}
+          {currentThread && (
+            <div
+              style={{
+                padding: '1rem 2rem',
+                background: 'rgba(15, 23, 42, 0.02)',
+                borderBottom: '1px solid rgba(15, 23, 42, 0.1)',
+                fontSize: '0.875rem',
+                color: '#64748b'
+              }}
+            >
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                {currentThread.status && (
+                  <span><strong>Status:</strong> {currentThread.status}</span>
+                )}
+                {currentThread.ball && (
+                  <span><strong>Ball:</strong> {currentThread.ball}</span>
+                )}
+                {currentThread.priority && (
+                  <span><strong>Priority:</strong> {currentThread.priority}</span>
+                )}
+                {currentThread.created && (
+                  <span><strong>Created:</strong> {new Date(currentThread.created).toLocaleDateString()}</span>
+                )}
+              </div>
+            </div>
+          )}
 
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className={`flex items-start gap-2 ${lineClass}`}
-                >
-                  {isBallFlip && (
-                    <motion.div
-                      initial={{ scaleY: 0 }}
-                      animate={{ scaleY: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-0.5 h-5 bg-accent rounded shrink-0"
-                    />
-                  )}
-                  {isCommand && <span className="text-accent shrink-0">$</span>}
-                  <span className={isCommand ? 'text-primary' : 'text-secondary pl-3'}>
-                    {formatLine(displayContent)}
-                  </span>
-                </motion.div>
-              );
-            })}
+          {/* Scrollable thread content */}
+          <div
+            ref={scrollContainerRef}
+            style={{
+              height: '500px',
+              overflowY: 'auto',
+              padding: '2rem',
+              background: '#FFFFFF'
+            }}
+          >
+            <AnimatePresence>
+              {displayedEntries.map((entry, index) => {
+                const isLastEntry = index === displayedEntries.length - 1;
 
-            {currentLineIndex < lines.length && displayedText && (
-              <div className={`flex items-start gap-2 ${getLineClass(lines[currentLineIndex])}`}>
-                {isBallFlipLine(lines[currentLineIndex]) && (
+                return (
                   <motion.div
-                    initial={{ scaleY: 0 }}
-                    animate={{ scaleY: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="w-0.5 h-5 bg-accent rounded shrink-0"
-                  />
-                )}
-                {lines[currentLineIndex].startsWith('$') && <span className="text-accent shrink-0">$</span>}
-                <span className={lines[currentLineIndex].startsWith('$') ? 'text-primary' : 'text-secondary pl-3'}>
-                  {formatLine(displayedText.replace('$ ', ''))}
-                </span>
-                {!prefersReducedMotion && isPlaying && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.5, repeat: Infinity }}
-                    className="inline-block w-1.5 h-4 bg-accent ml-0.5"
-                  />
-                )}
+                    key={index}
+                    ref={isLastEntry ? lastEntryRef : null}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    style={{ marginBottom: index < displayedEntries.length - 1 ? '2.5rem' : '0' }}
+                  >
+                    {/* Entry header with color coding */}
+                    <div
+                      style={{
+                        padding: '1rem 1.25rem',
+                        borderRadius: '0.5rem',
+                        background: entry.isClaude
+                          ? 'rgba(59, 130, 246, 0.08)' // Blue for Claude
+                          : entry.isCodex
+                          ? 'rgba(139, 92, 246, 0.08)' // Purple for Codex
+                          : 'rgba(15, 23, 42, 0.04)',
+                        border: '1px solid ' + (
+                          entry.isClaude
+                            ? 'rgba(59, 130, 246, 0.2)'
+                            : entry.isCodex
+                            ? 'rgba(139, 92, 246, 0.2)'
+                            : 'rgba(15, 23, 42, 0.1)'
+                        ),
+                        marginBottom: '1rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        {/* Agent badge */}
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            background: entry.isClaude
+                              ? '#3b82f6'
+                              : entry.isCodex
+                              ? '#8b5cf6'
+                              : '#64748b',
+                            color: '#FFFFFF'
+                          }}
+                        >
+                          {entry.author}
+                        </span>
+
+                        {/* Role & Type */}
+                        <span className="text-secondary text-sm">
+                          {entry.role && <span>{entry.role}</span>}
+                          {entry.role && entry.type && <span> · </span>}
+                          {entry.type && <span>{entry.type}</span>}
+                        </span>
+
+                        {/* Timestamp */}
+                        <span className="text-secondary text-sm" style={{ marginLeft: 'auto' }}>
+                          {new Date(entry.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {/* Entry title */}
+                      {entry.title && (
+                        <h4 className="text-base font-semibold text-primary" style={{ marginTop: '0.75rem' }}>
+                          {entry.title}
+                        </h4>
+                      )}
+                    </div>
+
+                    {/* Entry body with markdown rendering */}
+                    {entry.body && (
+                      <div
+                        className="text-secondary prose prose-sm max-w-none"
+                        style={{
+                          fontSize: '0.875rem',
+                          lineHeight: '1.6'
+                        }}
+                      >
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            h1: ({node, ...props}) => <h1 className="text-lg font-semibold text-primary mt-4 mb-2" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-base font-semibold text-primary mt-3 mb-2" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-primary mt-2 mb-1" {...props} />,
+                            p: ({node, ...props}) => <p className="mb-3 text-secondary" {...props} />,
+                            code: ({node, inline, ...props}: any) =>
+                              inline ? (
+                                <code
+                                  style={{
+                                    background: 'rgba(15, 23, 42, 0.08)',
+                                    padding: '0.125rem 0.375rem',
+                                    borderRadius: '0.25rem',
+                                    fontSize: '0.85em',
+                                    fontFamily: 'monospace'
+                                  }}
+                                  {...props}
+                                />
+                              ) : (
+                                <code
+                                  style={{
+                                    display: 'block',
+                                    background: 'rgba(15, 23, 42, 0.04)',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.375rem',
+                                    border: '1px solid rgba(15, 23, 42, 0.08)',
+                                    fontSize: '0.85em',
+                                    fontFamily: 'monospace',
+                                    overflowX: 'auto',
+                                    margin: '1rem 0'
+                                  }}
+                                  {...props}
+                                />
+                              ),
+                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-secondary" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-secondary" {...props} />,
+                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                            a: ({node, ...props}) => <a className="text-accent hover:underline" {...props} />,
+                            blockquote: ({node, ...props}) => (
+                              <blockquote
+                                style={{
+                                  borderLeft: '3px solid rgba(59, 130, 246, 0.3)',
+                                  paddingLeft: '1rem',
+                                  marginLeft: '0',
+                                  marginBottom: '1rem',
+                                  fontStyle: 'italic',
+                                  color: '#64748b'
+                                }}
+                                {...props}
+                              />
+                            ),
+                          }}
+                        >
+                          {entry.body}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+
+            {/* Loading indicator */}
+            {isPlaying && currentEntryIndex < entries.length && (
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <motion.div
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="text-secondary text-sm"
+                >
+                  Loading next entry...
+                </motion.div>
+              </div>
+            )}
+
+            {/* End indicator */}
+            {currentEntryIndex >= entries.length && (
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <p className="text-secondary text-sm">
+                  End of thread • <button onClick={() => { setCurrentEntryIndex(0); setIsPlaying(true); }} className="text-accent hover:underline">Replay</button>
+                </p>
               </div>
             )}
           </div>
+
+          {/* Controls footer */}
+          <div
+            style={{
+              padding: '1rem 2rem',
+              borderTop: '1px solid rgba(15, 23, 42, 0.1)',
+              background: 'rgba(15, 23, 42, 0.02)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              fontSize: '0.875rem'
+            }}
+          >
+            <div className="text-secondary">
+              Entry {Math.min(currentEntryIndex + 1, entries.length)} of {entries.length}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-primary hover:border-accent transition-colors"
+              >
+                {isPlaying ? '⏸ Pause' : '▶ Play'}
+              </button>
+
+              <button
+                onClick={() => { setCurrentEntryIndex(0); setIsPlaying(true); }}
+                className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-primary hover:border-accent transition-colors"
+              >
+                ↺ Restart
+              </button>
+
+              <span className="text-secondary text-xs">
+                Space: pause • ← →: navigate • Esc: close
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-    </Section>
+    </div>
   );
 }
