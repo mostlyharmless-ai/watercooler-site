@@ -88,6 +88,14 @@ function parseThread(content, filename) {
 }
 
 /**
+ * Threads to exclude from the landing page demo
+ * (Internal/work-in-progress threads not meant for public showcase)
+ */
+const EXCLUDED_THREADS = [
+  'docs-overhaul-notes.md'
+];
+
+/**
  * Load all threads from the watercooler-cloud-threads directory
  */
 function loadAllThreads(threadsDir) {
@@ -96,7 +104,8 @@ function loadAllThreads(threadsDir) {
   try {
     // Load main threads
     const mainFiles = fs.readdirSync(threadsDir)
-      .filter(f => f.endsWith('.md') && f !== 'index.md' && f !== 'README.md');
+      .filter(f => f.endsWith('.md') && f !== 'index.md' && f !== 'README.md')
+      .filter(f => !EXCLUDED_THREADS.includes(f));
 
     for (const file of mainFiles) {
       const content = fs.readFileSync(path.join(threadsDir, file), 'utf-8');
@@ -107,7 +116,8 @@ function loadAllThreads(threadsDir) {
     const archivedDir = path.join(threadsDir, 'archived');
     if (fs.existsSync(archivedDir)) {
       const archivedFiles = fs.readdirSync(archivedDir)
-        .filter(f => f.endsWith('.md'));
+        .filter(f => f.endsWith('.md'))
+        .filter(f => !EXCLUDED_THREADS.includes(f));
 
       for (const file of archivedFiles) {
         const content = fs.readFileSync(path.join(archivedDir, file), 'utf-8');
