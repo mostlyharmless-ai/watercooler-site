@@ -92,7 +92,8 @@ function parseThread(content, filename) {
  * (Internal/work-in-progress threads not meant for public showcase)
  */
 const EXCLUDED_THREADS = [
-  'docs-overhaul-notes.md'
+  'docs-overhaul-notes.md',
+  'thread-length-context-management.md'
 ];
 
 /**
