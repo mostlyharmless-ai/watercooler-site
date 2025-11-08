@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-markdown@9/react-markdown.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/remark-gfm@4/index.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const markdown = `2. **OAuth scopes**
+   - \`chat:write\`, \`chat:write.public\` (posting updates if needed)
+   - \`app_home:read\`, \`app_home:write\` (render Home tab)`;
+
+    ReactDOM.render(
+      <ReactMarkdown>{markdown}</ReactMarkdown>,
+      document.getElementById('root')
+    );
+  </script>
+</body>
+</html>

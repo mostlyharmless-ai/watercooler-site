@@ -334,10 +334,10 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                     {visibleBodyBlocks.length > 0 && (
                       <div
                         ref={isLastEntry ? lastVisibleRef : null}
-                        className="text-secondary prose prose-sm max-w-none"
                         style={{
                           fontSize: '0.875rem',
-                          lineHeight: '1.6'
+                          lineHeight: '1.6',
+                          color: '#64748b'
                         }}
                       >
                         {visibleBodyBlocks.map((block, blockIndex) => (
@@ -348,7 +348,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                               h1: ({node, ...props}) => <h1 className="text-lg font-semibold text-primary mt-4 mb-2" {...props} />,
                               h2: ({node, ...props}) => <h2 className="text-base font-semibold text-primary mt-3 mb-2" {...props} />,
                               h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-primary mt-2 mb-1" {...props} />,
-                              p: ({node, ...props}) => <p className="mb-3 text-secondary" {...props} />,
+                              p: ({node, ...props}) => <p style={{ marginBottom: '0.75rem' }} {...props} />,
                               code: ({node, inline, ...props}: any) =>
                                 inline ? (
                                   <code
@@ -377,9 +377,9 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                                     {...props}
                                   />
                                 ),
-                              ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-secondary" {...props} />,
-                              ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-secondary" {...props} />,
-                              li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                              ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.25rem', marginBottom: '0.75rem' }} {...props} />,
+                              ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.25rem', marginBottom: '0.75rem' }} {...props} />,
+                              li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem' }} {...props} />,
                               a: ({node, ...props}) => <a className="text-accent hover:underline" {...props} />,
                               blockquote: ({node, ...props}) => (
                                 <blockquote
