@@ -36,9 +36,10 @@ interface Thread {
 export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
   const [currentThreadId, setCurrentThreadId] = useState(threadsData[0]?.id || '');
   const [currentEntryIndex, setCurrentEntryIndex] = useState(0);
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const lastEntryRef = useRef<HTMLDivElement>(null);
+  const lastVisibleRef = useRef<HTMLDivElement>(null);
 
   const threads = threadsData as Thread[];
   const currentThread = threads.find((t: Thread) => t.id === currentThreadId) || threads[0];
@@ -48,37 +49,63 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
   useEffect(() => {
     if (open) {
       setCurrentEntryIndex(0);
+      setCurrentLineIndex(0);
       setIsPlaying(true);
     }
   }, [open, currentThreadId]);
 
   // Scroll animation - wait until content reaches BOTTOM before scrolling
   useEffect(() => {
-    if (!scrollContainerRef.current || !lastEntryRef.current) return;
+    if (!scrollContainerRef.current || !lastVisibleRef.current) return;
 
     const container = scrollContainerRef.current;
-    const lastEntry = lastEntryRef.current;
+    const lastVisible = lastVisibleRef.current;
 
-    // Check if last entry has reached the bottom of viewport
+    // Check if last visible content has reached the bottom of viewport
     const containerRect = container.getBoundingClientRect();
-    const entryRect = lastEntry.getBoundingClientRect();
+    const visibleRect = lastVisible.getBoundingClientRect();
 
-    // Only scroll if the bottom of the last entry is below the bottom of the container
-    if (entryRect.bottom > containerRect.bottom) {
-      lastEntry.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // Only scroll if the bottom of the last visible element is below the bottom of the container
+    if (visibleRect.bottom > containerRect.bottom) {
+      lastVisible.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [currentEntryIndex]);
+  }, [currentEntryIndex, currentLineIndex]);
 
-  // Entry playback with 2.5 second pause between entries
+  // Line-by-line playback
   useEffect(() => {
     if (!isPlaying || !open || currentEntryIndex >= entries.length) return;
 
-    const timeout = setTimeout(() => {
-      setCurrentEntryIndex(currentEntryIndex + 1);
-    }, 2500); // 2.5 second pause between entries
+    const currentEntry = entries[currentEntryIndex];
+    if (!currentEntry || !currentEntry.body) {
+      // No body, move to next entry immediately
+      const timeout = setTimeout(() => {
+        setCurrentEntryIndex(currentEntryIndex + 1);
+        setCurrentLineIndex(0);
+      }, 2500);
+      return () => clearTimeout(timeout);
+    }
 
-    return () => clearTimeout(timeout);
-  }, [currentEntryIndex, isPlaying, entries.length, open]);
+    const bodyLines = currentEntry.body.split('\n');
+
+    if (currentLineIndex < bodyLines.length) {
+      // Random delay between 200ms and 333ms (3-5 lines per second)
+      const delay = Math.floor(Math.random() * 134) + 200; // 200-333ms
+
+      const timeout = setTimeout(() => {
+        setCurrentLineIndex(currentLineIndex + 1);
+      }, delay);
+
+      return () => clearTimeout(timeout);
+    } else {
+      // All lines shown, pause 2.5 seconds before next entry
+      const timeout = setTimeout(() => {
+        setCurrentEntryIndex(currentEntryIndex + 1);
+        setCurrentLineIndex(0);
+      }, 2500);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [currentEntryIndex, currentLineIndex, isPlaying, entries, open]);
 
   // Keyboard controls
   useEffect(() => {
@@ -90,28 +117,49 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
       } else if (e.key === ' ') {
         e.preventDefault();
         setIsPlaying(!isPlaying);
-      } else if (e.key === 'ArrowRight' && currentEntryIndex < entries.length) {
+      } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        setCurrentEntryIndex(currentEntryIndex + 1);
+        if (currentEntryIndex < entries.length - 1) {
+          setCurrentEntryIndex(currentEntryIndex + 1);
+          setCurrentLineIndex(0);
+        } else if (currentEntryIndex < entries.length) {
+          // Skip to end of current entry
+          const currentEntry = entries[currentEntryIndex];
+          if (currentEntry?.body) {
+            const bodyLines = currentEntry.body.split('\n');
+            setCurrentLineIndex(bodyLines.length);
+          }
+        }
       } else if (e.key === 'ArrowLeft' && currentEntryIndex > 0) {
         e.preventDefault();
         setCurrentEntryIndex(currentEntryIndex - 1);
+        setCurrentLineIndex(0);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose, isPlaying, currentEntryIndex, entries.length]);
+  }, [open, onClose, isPlaying, currentEntryIndex, currentLineIndex, entries]);
 
   const handleThreadChange = (threadId: string) => {
     setCurrentThreadId(threadId);
     setCurrentEntryIndex(0);
+    setCurrentLineIndex(0);
     setIsPlaying(true);
   };
 
   if (!open) return null;
 
-  const displayedEntries = entries.slice(0, currentEntryIndex + 1);
+  // Build list of entries to display
+  const displayedEntries = entries.slice(0, currentEntryIndex + 1).map((entry, idx) => {
+    if (idx < currentEntryIndex) {
+      // Completed entries - show fully
+      return { ...entry, visibleLines: entry.body ? entry.body.split('\n').length : 0 };
+    } else {
+      // Current entry - show up to currentLineIndex
+      return { ...entry, visibleLines: currentLineIndex };
+    }
+  });
 
   return (
     <div style={{ marginTop: '3rem', marginBottom: '5rem', padding: '0 1.5rem' }}>
@@ -202,18 +250,20 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
           >
             <AnimatePresence>
               {displayedEntries.map((entry, index) => {
+                const bodyLines = entry.body ? entry.body.split('\n') : [];
+                const visibleBodyLines = bodyLines.slice(0, entry.visibleLines);
+                const partialBody = visibleBodyLines.join('\n');
                 const isLastEntry = index === displayedEntries.length - 1;
 
                 return (
                   <motion.div
                     key={index}
-                    ref={isLastEntry ? lastEntryRef : null}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
                     style={{ marginBottom: index < displayedEntries.length - 1 ? '2.5rem' : '0' }}
                   >
-                    {/* Entry header with color coding */}
+                    {/* Entry header - appears instantly */}
                     <div
                       style={{
                         padding: '1rem 1.25rem',
@@ -277,9 +327,10 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                       )}
                     </div>
 
-                    {/* Entry body with markdown rendering */}
-                    {entry.body && (
+                    {/* Entry body - renders line-by-line */}
+                    {partialBody && (
                       <div
+                        ref={isLastEntry ? lastVisibleRef : null}
                         className="text-secondary prose prose-sm max-w-none"
                         style={{
                           fontSize: '0.875rem',
@@ -340,7 +391,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                             ),
                           }}
                         >
-                          {entry.body}
+                          {partialBody}
                         </ReactMarkdown>
                       </div>
                     )}
@@ -357,7 +408,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                   transition={{ duration: 1.5, repeat: Infinity }}
                   className="text-secondary text-sm"
                 >
-                  Loading next entry...
+                  {currentLineIndex === 0 ? 'Loading next entry...' : 'Typing...'}
                 </motion.div>
               </div>
             )}
@@ -366,7 +417,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
             {currentEntryIndex >= entries.length && (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <p className="text-secondary text-sm">
-                  End of thread • <button onClick={() => { setCurrentEntryIndex(0); setIsPlaying(true); }} className="text-accent hover:underline">Replay</button>
+                  End of thread • <button onClick={() => { setCurrentEntryIndex(0); setCurrentLineIndex(0); setIsPlaying(true); }} className="text-accent hover:underline">Replay</button>
                 </p>
               </div>
             )}
@@ -398,7 +449,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
               </button>
 
               <button
-                onClick={() => { setCurrentEntryIndex(0); setIsPlaying(true); }}
+                onClick={() => { setCurrentEntryIndex(0); setCurrentLineIndex(0); setIsPlaying(true); }}
                 className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-primary hover:border-accent transition-colors"
               >
                 ↺ Restart
