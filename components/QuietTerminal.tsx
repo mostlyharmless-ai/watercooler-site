@@ -256,7 +256,6 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
               {displayedEntries.map((entry, index) => {
                 const bodyBlocks = entry.body ? parseMarkdownBlocks(entry.body) : [];
                 const visibleBodyBlocks = bodyBlocks.slice(0, entry.visibleBlocks);
-                const partialBody = visibleBodyBlocks.join('\n\n');
                 const isLastEntry = index === displayedEntries.length - 1;
 
                 return (
@@ -331,8 +330,8 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                       )}
                     </div>
 
-                    {/* Entry body - renders line-by-line */}
-                    {partialBody && (
+                    {/* Entry body - renders block-by-block */}
+                    {visibleBodyBlocks.length > 0 && (
                       <div
                         ref={isLastEntry ? lastVisibleRef : null}
                         className="text-secondary prose prose-sm max-w-none"
@@ -341,62 +340,65 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                           lineHeight: '1.6'
                         }}
                       >
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            h1: ({node, ...props}) => <h1 className="text-lg font-semibold text-primary mt-4 mb-2" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-base font-semibold text-primary mt-3 mb-2" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-primary mt-2 mb-1" {...props} />,
-                            p: ({node, ...props}) => <p className="mb-3 text-secondary" {...props} />,
-                            code: ({node, inline, ...props}: any) =>
-                              inline ? (
-                                <code
+                        {visibleBodyBlocks.map((block, blockIndex) => (
+                          <ReactMarkdown
+                            key={blockIndex}
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({node, ...props}) => <h1 className="text-lg font-semibold text-primary mt-4 mb-2" {...props} />,
+                              h2: ({node, ...props}) => <h2 className="text-base font-semibold text-primary mt-3 mb-2" {...props} />,
+                              h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-primary mt-2 mb-1" {...props} />,
+                              p: ({node, ...props}) => <p className="mb-3 text-secondary" {...props} />,
+                              code: ({node, inline, ...props}: any) =>
+                                inline ? (
+                                  <code
+                                    style={{
+                                      background: 'rgba(15, 23, 42, 0.08)',
+                                      padding: '0.125rem 0.375rem',
+                                      borderRadius: '0.25rem',
+                                      fontSize: '0.85em',
+                                      fontFamily: 'monospace'
+                                    }}
+                                    {...props}
+                                  />
+                                ) : (
+                                  <code
+                                    style={{
+                                      display: 'block',
+                                      background: 'rgba(15, 23, 42, 0.04)',
+                                      padding: '0.75rem',
+                                      borderRadius: '0.375rem',
+                                      border: '1px solid rgba(15, 23, 42, 0.08)',
+                                      fontSize: '0.85em',
+                                      fontFamily: 'monospace',
+                                      overflowX: 'auto',
+                                      margin: '1rem 0'
+                                    }}
+                                    {...props}
+                                  />
+                                ),
+                              ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-secondary" {...props} />,
+                              ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-secondary" {...props} />,
+                              li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                              a: ({node, ...props}) => <a className="text-accent hover:underline" {...props} />,
+                              blockquote: ({node, ...props}) => (
+                                <blockquote
                                   style={{
-                                    background: 'rgba(15, 23, 42, 0.08)',
-                                    padding: '0.125rem 0.375rem',
-                                    borderRadius: '0.25rem',
-                                    fontSize: '0.85em',
-                                    fontFamily: 'monospace'
-                                  }}
-                                  {...props}
-                                />
-                              ) : (
-                                <code
-                                  style={{
-                                    display: 'block',
-                                    background: 'rgba(15, 23, 42, 0.04)',
-                                    padding: '0.75rem',
-                                    borderRadius: '0.375rem',
-                                    border: '1px solid rgba(15, 23, 42, 0.08)',
-                                    fontSize: '0.85em',
-                                    fontFamily: 'monospace',
-                                    overflowX: 'auto',
-                                    margin: '1rem 0'
+                                    borderLeft: '3px solid rgba(59, 130, 246, 0.3)',
+                                    paddingLeft: '1rem',
+                                    marginLeft: '0',
+                                    marginBottom: '1rem',
+                                    fontStyle: 'italic',
+                                    color: '#64748b'
                                   }}
                                   {...props}
                                 />
                               ),
-                            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-secondary" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-secondary" {...props} />,
-                            li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                            a: ({node, ...props}) => <a className="text-accent hover:underline" {...props} />,
-                            blockquote: ({node, ...props}) => (
-                              <blockquote
-                                style={{
-                                  borderLeft: '3px solid rgba(59, 130, 246, 0.3)',
-                                  paddingLeft: '1rem',
-                                  marginLeft: '0',
-                                  marginBottom: '1rem',
-                                  fontStyle: 'italic',
-                                  color: '#64748b'
-                                }}
-                                {...props}
-                              />
-                            ),
-                          }}
-                        >
-                          {partialBody}
-                        </ReactMarkdown>
+                            }}
+                          >
+                            {block}
+                          </ReactMarkdown>
+                        ))}
                       </div>
                     )}
                   </motion.div>
