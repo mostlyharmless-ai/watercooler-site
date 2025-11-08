@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import threadsData from '@/lib/generatedThreads.json';
+import { parseMarkdownBlocks } from '@/lib/parseMarkdownBlocks';
 
 interface QuietTerminalProps {
   open: boolean;
@@ -36,7 +37,7 @@ interface Thread {
 export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
   const [currentThreadId, setCurrentThreadId] = useState(threadsData[0]?.id || '');
   const [currentEntryIndex, setCurrentEntryIndex] = useState(0);
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastVisibleRef = useRef<HTMLDivElement>(null);
@@ -49,7 +50,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
   useEffect(() => {
     if (open) {
       setCurrentEntryIndex(0);
-      setCurrentLineIndex(0);
+      setCurrentBlockIndex(0);
       setIsPlaying(true);
     }
   }, [open, currentThreadId]);
@@ -69,9 +70,9 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
     if (visibleRect.bottom > containerRect.bottom) {
       lastVisible.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [currentEntryIndex, currentLineIndex]);
+  }, [currentEntryIndex, currentBlockIndex]);
 
-  // Line-by-line playback
+  // Block-by-block playback
   useEffect(() => {
     if (!isPlaying || !open || currentEntryIndex >= entries.length) return;
 
@@ -80,32 +81,32 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
       // No body, move to next entry immediately
       const timeout = setTimeout(() => {
         setCurrentEntryIndex(currentEntryIndex + 1);
-        setCurrentLineIndex(0);
+        setCurrentBlockIndex(0);
       }, 2500);
       return () => clearTimeout(timeout);
     }
 
-    const bodyLines = currentEntry.body.split('\n');
+    const bodyBlocks = parseMarkdownBlocks(currentEntry.body);
 
-    if (currentLineIndex < bodyLines.length) {
-      // Random delay between 111ms and 200ms (5-9 lines per second)
+    if (currentBlockIndex < bodyBlocks.length) {
+      // Random delay between 111ms and 200ms (5-9 blocks per second)
       const delay = Math.floor(Math.random() * 90) + 111; // 111-200ms
 
       const timeout = setTimeout(() => {
-        setCurrentLineIndex(currentLineIndex + 1);
+        setCurrentBlockIndex(currentBlockIndex + 1);
       }, delay);
 
       return () => clearTimeout(timeout);
     } else {
-      // All lines shown, pause 2.5 seconds before next entry
+      // All blocks shown, pause 2.5 seconds before next entry
       const timeout = setTimeout(() => {
         setCurrentEntryIndex(currentEntryIndex + 1);
-        setCurrentLineIndex(0);
+        setCurrentBlockIndex(0);
       }, 2500);
 
       return () => clearTimeout(timeout);
     }
-  }, [currentEntryIndex, currentLineIndex, isPlaying, entries, open]);
+  }, [currentEntryIndex, currentBlockIndex, isPlaying, entries, open]);
 
   // Keyboard controls
   useEffect(() => {
@@ -121,30 +122,30 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
         e.preventDefault();
         if (currentEntryIndex < entries.length - 1) {
           setCurrentEntryIndex(currentEntryIndex + 1);
-          setCurrentLineIndex(0);
+          setCurrentBlockIndex(0);
         } else if (currentEntryIndex < entries.length) {
           // Skip to end of current entry
           const currentEntry = entries[currentEntryIndex];
           if (currentEntry?.body) {
-            const bodyLines = currentEntry.body.split('\n');
-            setCurrentLineIndex(bodyLines.length);
+            const bodyBlocks = parseMarkdownBlocks(currentEntry.body);
+            setCurrentBlockIndex(bodyBlocks.length);
           }
         }
       } else if (e.key === 'ArrowLeft' && currentEntryIndex > 0) {
         e.preventDefault();
         setCurrentEntryIndex(currentEntryIndex - 1);
-        setCurrentLineIndex(0);
+        setCurrentBlockIndex(0);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose, isPlaying, currentEntryIndex, currentLineIndex, entries]);
+  }, [open, onClose, isPlaying, currentEntryIndex, currentBlockIndex, entries]);
 
   const handleThreadChange = (threadId: string) => {
     setCurrentThreadId(threadId);
     setCurrentEntryIndex(0);
-    setCurrentLineIndex(0);
+    setCurrentBlockIndex(0);
     setIsPlaying(true);
   };
 
@@ -154,10 +155,10 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
   const displayedEntries = entries.slice(0, currentEntryIndex + 1).map((entry, idx) => {
     if (idx < currentEntryIndex) {
       // Completed entries - show fully
-      return { ...entry, visibleLines: entry.body ? entry.body.split('\n').length : 0 };
+      return { ...entry, visibleBlocks: entry.body ? parseMarkdownBlocks(entry.body).length : 0 };
     } else {
-      // Current entry - show up to currentLineIndex
-      return { ...entry, visibleLines: currentLineIndex };
+      // Current entry - show up to currentBlockIndex
+      return { ...entry, visibleBlocks: currentBlockIndex };
     }
   });
 
@@ -253,9 +254,9 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
           >
             <AnimatePresence>
               {displayedEntries.map((entry, index) => {
-                const bodyLines = entry.body ? entry.body.split('\n') : [];
-                const visibleBodyLines = bodyLines.slice(0, entry.visibleLines);
-                const partialBody = visibleBodyLines.join('\n');
+                const bodyBlocks = entry.body ? parseMarkdownBlocks(entry.body) : [];
+                const visibleBodyBlocks = bodyBlocks.slice(0, entry.visibleBlocks);
+                const partialBody = visibleBodyBlocks.join('\n\n');
                 const isLastEntry = index === displayedEntries.length - 1;
 
                 return (
@@ -411,7 +412,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
                   transition={{ duration: 1.5, repeat: Infinity }}
                   className="text-secondary text-sm"
                 >
-                  {currentLineIndex === 0 ? 'Loading next entry...' : 'Typing...'}
+                  {currentBlockIndex === 0 ? 'Loading next entry...' : 'Typing...'}
                 </motion.div>
               </div>
             )}
@@ -420,7 +421,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
             {currentEntryIndex >= entries.length && (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <p className="text-secondary text-sm">
-                  End of thread • <button onClick={() => { setCurrentEntryIndex(0); setCurrentLineIndex(0); setIsPlaying(true); }} className="text-accent hover:underline">Replay</button>
+                  End of thread • <button onClick={() => { setCurrentEntryIndex(0); setCurrentBlockIndex(0); setIsPlaying(true); }} className="text-accent hover:underline">Replay</button>
                 </p>
               </div>
             )}
@@ -452,7 +453,7 @@ export default function QuietTerminal({ open, onClose }: QuietTerminalProps) {
               </button>
 
               <button
-                onClick={() => { setCurrentEntryIndex(0); setCurrentLineIndex(0); setIsPlaying(true); }}
+                onClick={() => { setCurrentEntryIndex(0); setCurrentBlockIndex(0); setIsPlaying(true); }}
                 className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-primary hover:border-accent transition-colors"
               >
                 ↺ Restart
