@@ -24,28 +24,9 @@ export default function Quickstart() {
           Get Started
         </h2>
 
-        {/* Step 1: Clone and Install */}
-        <div style={{ marginBottom: '3rem' }}>
-          <h3 className="text-lg md:text-xl font-semibold text-primary" style={{ marginBottom: '1rem' }}>
-            1. Clone and Install
-          </h3>
-          <pre
-            className="font-mono text-sm md:text-base leading-relaxed text-primary overflow-x-auto"
-            style={{
-              background: 'rgba(15, 23, 42, 0.04)',
-              borderRadius: '0.5rem',
-              padding: '1.25rem',
-              border: '1px solid rgba(15, 23, 42, 0.08)'
-            }}
-          >
-            {copy.quickstart.install}
-          </pre>
-        </div>
-
-        {/* Step 2: Configure Client */}
         <div>
           <h3 className="text-lg md:text-xl font-semibold text-primary" style={{ marginBottom: '1rem' }}>
-            2. Configure Your Client
+            1. Configure Your Client
           </h3>
 
           {/* Tab Navigation */}

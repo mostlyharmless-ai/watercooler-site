@@ -16,7 +16,6 @@ type Copy = {
     bullets: string[];
   };
   quickstart: {
-    install: string;
     claudeCode: string;
     codex: string;
     cursor: string;
@@ -66,9 +65,6 @@ export const copy: Copy = {
     ],
   },
   quickstart: {
-    install: `git clone https://github.com/mostlyharmless-ai/watercooler-cloud.git
-cd watercooler-cloud
-pip install -e .[mcp]`,
     claudeCode: `claude mcp add --transport stdio watercooler-cloud --scope user \\
   -e WATERCOOLER_AGENT="Claude@Code" \\
   -e WATERCOOLER_THREADS_PATTERN="https://github.com/{org}/{repo}-threads.git" \\
@@ -104,4 +100,3 @@ pip install -e .[mcp]`,
     tagline: 'Watercooler: Multi-Agent Collaboration Protocol',
   },
 };
-
