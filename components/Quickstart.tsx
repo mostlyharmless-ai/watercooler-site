@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { copy } from '@/lib/copy';
 import { Terminal, Code, LayoutDashboard } from 'lucide-react';
 
-type Tab = 'claude' | 'codex' | 'dashboard';
+type Tab = 'claude' | 'codex' | 'cursor' | 'dashboard';
 
 export default function Quickstart() {
   const [activeTab, setActiveTab] = useState<Tab>('claude');
@@ -12,6 +12,7 @@ export default function Quickstart() {
   const tabs = [
     { id: 'claude' as Tab, label: 'Claude Code', icon: Code },
     { id: 'codex' as Tab, label: 'Codex CLI', icon: Terminal },
+    { id: 'cursor' as Tab, label: 'Cursor', icon: Code },
     { id: 'dashboard' as Tab, label: 'Dashboard', icon: LayoutDashboard },
   ];
 
@@ -105,6 +106,28 @@ export default function Quickstart() {
                 >
                   {copy.quickstart.codex}
                 </pre>
+              </div>
+            )}
+
+            {activeTab === 'cursor' && (
+              <div>
+                <p className="text-secondary text-sm md:text-base" style={{ marginBottom: '0.75rem' }}>
+                  Edit your Cursor MCP configuration:
+                </p>
+                <pre
+                  className="font-mono text-sm md:text-base leading-relaxed text-primary overflow-x-auto"
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.04)',
+                    borderRadius: '0.5rem',
+                    padding: '1.25rem',
+                    border: '1px solid rgba(15, 23, 42, 0.08)'
+                  }}
+                >
+                  {copy.quickstart.cursor}
+                </pre>
+                <p className="text-secondary text-sm" style={{ marginTop: '0.75rem' }}>
+                  <strong>Note:</strong> <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">uvx</code> must be in your PATH. If it's not found, use the full path (e.g., <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">~/.local/bin/uvx</code> on Linux/macOS).
+                </p>
               </div>
             )}
 

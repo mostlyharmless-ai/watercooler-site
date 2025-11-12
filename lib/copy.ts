@@ -19,6 +19,7 @@ type Copy = {
     install: string;
     claudeCode: string;
     codex: string;
+    cursor: string;
     dashboard: string;
   };
   footer: {
@@ -72,12 +73,31 @@ pip install -e .[mcp]`,
   -e WATERCOOLER_AGENT="Claude@Code" \\
   -e WATERCOOLER_THREADS_PATTERN="https://github.com/{org}/{repo}-threads.git" \\
   -e WATERCOOLER_AUTO_BRANCH=1 \\
-  -- python -m watercooler_mcp`,
+  -- uvx --from git+https://github.com/mostlyharmless-ai/watercooler-cloud watercooler-mcp`,
     codex: `codex mcp add watercooler-cloud \\
   -e WATERCOOLER_AGENT="Codex" \\
   -e WATERCOOLER_THREADS_PATTERN="https://github.com/{org}/{repo}-threads.git" \\
   -e WATERCOOLER_AUTO_BRANCH=1 \\
-  -- python -m watercooler_mcp`,
+  -- uvx --from git+https://github.com/mostlyharmless-ai/watercooler-cloud watercooler-mcp`,
+    cursor: `Edit ~/.cursor/mcp.json:
+
+{
+  "mcpServers": {
+    "watercooler-cloud": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/mostlyharmless-ai/watercooler-cloud",
+        "watercooler-mcp"
+      ],
+      "env": {
+        "WATERCOOLER_AGENT": "Cursor",
+        "WATERCOOLER_THREADS_PATTERN": "https://github.com/{org}/{repo}-threads.git",
+        "WATERCOOLER_AUTO_BRANCH": "1"
+      }
+    }
+  }
+}`,
     dashboard: `python -m watercooler_dashboard.local_app`,
   },
   footer: {
