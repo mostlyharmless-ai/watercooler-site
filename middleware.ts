@@ -1,24 +1,27 @@
-import { withAuth } from 'next-auth/middleware';
+import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export default withAuth(
-  function middleware(req) {
-    // Add any additional middleware logic here
-    return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        // Protect dashboard routes
-        if (req.nextUrl.pathname.startsWith('/dashboard')) {
-          return !!token;
-        }
-        // Allow access to other routes
-        return true;
-      },
-    },
+export async function middleware(request: NextRequest) {
+  const session = await auth();
+  
+  // Protect dashboard routes
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    if (!session?.user?.id) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
-);
+  
+  // Protect API routes
+  if (request.nextUrl.pathname.startsWith('/api/mcp') || 
+      request.nextUrl.pathname.startsWith('/api/user')) {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+  
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [

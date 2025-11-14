@@ -1,10 +1,10 @@
-import { NextAuthOptions } from 'next-auth';
+import NextAuth from 'next-auth';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import GitHubProvider from 'next-auth/providers/github';
 import { prisma } from './db';
 import { encryptToken, decryptToken } from './encryption';
 
-export const authOptions: NextAuthOptions = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
   providers: [
     GitHubProvider({
@@ -69,8 +69,8 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
+      if (session.user && user) {
+        (session.user as any).id = user.id;
         // Fetch GitHub username from user record
         const dbUser = await prisma.user.findUnique({
           where: { id: user.id },
@@ -92,7 +92,7 @@ export const authOptions: NextAuthOptions = {
     strategy: 'database',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-};
+});
 
 /**
  * Get decrypted GitHub token for a user
