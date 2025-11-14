@@ -33,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             : new Date(Date.now() + 8 * 60 * 60 * 1000); // Default to 8 hours
 
           // Update or create GitHub token record
-          await prisma.githubToken.upsert({
+          await prisma.gitHubToken.upsert({
             where: { userId: user.id },
             update: {
               accessTokenEncrypted: encryptedAccessToken,
@@ -99,7 +99,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
  */
 export async function getGitHubToken(userId: string): Promise<string | null> {
   try {
-    const tokenRecord = await prisma.githubToken.findUnique({
+    const tokenRecord = await prisma.gitHubToken.findUnique({
       where: { userId },
     });
 

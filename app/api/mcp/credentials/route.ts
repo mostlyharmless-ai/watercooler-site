@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get token expiration info
-    const tokenRecord = await prisma.githubToken.findUnique({
+    const tokenRecord = await prisma.gitHubToken.findUnique({
       where: { userId: session.user.id },
       select: { expiresAt: true, scopes: true },
     });
