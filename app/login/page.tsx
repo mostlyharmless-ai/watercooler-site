@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
 
           <button
-            onClick={() => signIn('github', { callbackUrl: '/onboarding' })}
+            onClick={() => signIn('github', { redirectTo: '/onboarding' })}
             className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-accent text-white font-medium rounded-lg hover:bg-accent-hover hover:scale-105 transition-all shadow-md"
             style={{ boxShadow: '0 4px 6px -1px rgba(13, 148, 136, 0.3), 0 2px 4px -1px rgba(13, 148, 136, 0.2)' }}
           >

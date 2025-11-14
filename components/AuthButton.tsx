@@ -65,7 +65,7 @@ export default function AuthButton() {
               Settings
             </a>
             <button
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={() => signOut({ redirectTo: '/' })}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-secondary hover:bg-surface/80 transition-colors"
             >
               <LogOut className="w-4 h-4" />
@@ -80,7 +80,7 @@ export default function AuthButton() {
   return (
     <div className="flex items-center gap-3">
       <button
-        onClick={() => signIn('github', { callbackUrl: '/dashboard' })}
+        onClick={() => signIn('github', { redirectTo: '/onboarding' })}
         className="inline-flex items-center gap-2 rounded-lg bg-accent text-white px-5 py-2 font-medium hover:bg-accent-hover hover:scale-105 transition-all shadow-md"
         style={{ boxShadow: '0 4px 6px -1px rgba(13, 148, 136, 0.3), 0 2px 4px -1px rgba(13, 148, 136, 0.2)' }}
       >

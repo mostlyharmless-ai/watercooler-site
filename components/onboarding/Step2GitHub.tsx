@@ -54,7 +54,8 @@ export default function Step2GitHub({ onNext }: Step2GitHubProps) {
 
   const handleConnectGitHub = () => {
     // Redirect to onboarding with step 2 in the URL so we can restore state
-    signIn('github', { callbackUrl: '/onboarding?step=2' });
+    // NextAuth v5 uses redirectTo instead of callbackUrl
+    signIn('github', { redirectTo: '/onboarding?step=2' });
   };
 
   return (

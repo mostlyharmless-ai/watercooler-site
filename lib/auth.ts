@@ -103,35 +103,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       console.log('[AUTH] redirect callback - NEXTAUTH_URL:', nextAuthUrl);
       console.log('[AUTH] redirect callback - VERCEL_URL:', vercelUrl);
       
-      // If URL is /dashboard and we're expecting onboarding, check if we should override
-      // This is a workaround for NextAuth not preserving callbackUrl
-      if (url === '/dashboard') {
-        console.log('[AUTH] WARNING: Received /dashboard in redirect - this might be a default');
-        console.log('[AUTH] Redirecting to /onboarding instead - onboarding page will handle completion check');
-        // Override to onboarding - the onboarding page will check if complete and redirect to dashboard
-        const onboardingUrl = baseUrl.startsWith('http') 
-          ? `${baseUrl}/onboarding`
-          : `https://${vercelUrl || baseUrl}/onboarding`;
-        console.log('[AUTH] Overriding /dashboard redirect to:', onboardingUrl);
-        return onboardingUrl;
-      }
-      
-      console.log('[AUTH] redirect callback - DETAILED:', { 
-        url, 
-        baseUrl, 
-        nextAuthUrl,
-        vercelUrl,
-        isProduction: baseUrl === nextAuthUrl,
-        urlType: typeof url,
-        urlLength: url?.length,
-        urlStartsWithSlash: url?.startsWith('/'),
-        urlIncludesOnboarding: url?.includes('onboarding'),
-        urlIncludesDashboard: url?.includes('dashboard'),
-        fullUrl: typeof url === 'string' && url.startsWith('/') ? `${baseUrl}${url}` : url
-      });
-      
       // CRITICAL FIX: If baseUrl is production (NEXTAUTH_URL) but we're on a preview deployment,
       // use VERCEL_URL instead. This prevents redirecting to production from preview deployments.
+      // Calculate validBaseUrl FIRST so we can use it for all redirects
       let validBaseUrl = baseUrl;
       
       // Check if baseUrl is production but we're on a preview deployment
@@ -150,6 +124,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       
       console.log('[AUTH] Using baseUrl:', validBaseUrl);
+      
+      // Safety net: If we still get /dashboard (shouldn't happen with redirectTo fix),
+      // redirect to /onboarding first. The onboarding page will check completion status
+      // and redirect to dashboard if needed. This ensures new users always go through onboarding.
+      // NOTE: With redirectTo parameter, we should now receive the correct URLs from NextAuth v5
+      if (url === '/dashboard') {
+        console.log('[AUTH] WARNING: Received /dashboard despite redirectTo fix - intercepting to /onboarding');
+        console.log('[AUTH] This suggests redirectTo may not be working as expected. Check NextAuth v5 behavior.');
+        const onboardingUrl = `${validBaseUrl}/onboarding`;
+        console.log('[AUTH] Redirecting to:', onboardingUrl);
+        return onboardingUrl;
+      }
+      
+      // Also handle case where URL might be root - redirect to onboarding
+      if (url === '/' || url === '') {
+        console.log('[AUTH] Intercepting root redirect - redirecting to /onboarding');
+        const onboardingUrl = `${validBaseUrl}/onboarding`;
+        console.log('[AUTH] Redirecting to:', onboardingUrl);
+        return onboardingUrl;
+      }
+      
+      console.log('[AUTH] redirect callback - DETAILED:', { 
+        url, 
+        baseUrl, 
+        validBaseUrl,
+        nextAuthUrl,
+        vercelUrl,
+        isProduction: baseUrl === nextAuthUrl,
+        urlType: typeof url,
+        urlLength: url?.length,
+        urlStartsWithSlash: url?.startsWith('/'),
+        urlIncludesOnboarding: url?.includes('onboarding'),
+        urlIncludesDashboard: url?.includes('dashboard'),
+        fullUrl: typeof url === 'string' && url.startsWith('/') ? `${validBaseUrl}${url}` : url
+      });
       
       // Allow relative callback URLs (most common case)
       if (url.startsWith('/')) {
