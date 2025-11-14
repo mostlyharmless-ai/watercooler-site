@@ -69,19 +69,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async session({ session, user }) {
-      if (session.user && user) {
-        (session.user as any).id = user.id;
-        // Fetch GitHub username from user record
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { githubUsername: true, githubId: true },
-        });
-        if (dbUser) {
-          (session.user as any).githubUsername = dbUser.githubUsername;
-          (session.user as any).githubId = dbUser.githubId;
+      try {
+        if (session.user) {
+          // In NextAuth v5 with database sessions, user.id should be available
+          const userId = user?.id || (session.user as any).id;
+          
+          if (userId) {
+            (session.user as any).id = userId;
+            // Fetch GitHub username from user record
+            const dbUser = await prisma.user.findUnique({
+              where: { id: userId },
+              select: { githubUsername: true, githubId: true },
+            });
+            if (dbUser) {
+              (session.user as any).githubUsername = dbUser.githubUsername;
+              (session.user as any).githubId = dbUser.githubId;
+            }
+          }
         }
+      } catch (error) {
+        console.error('Error in session callback:', error);
+        // Return session even if there's an error
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Allow relative callback URLs
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      // Allow callback URLs on the same origin
+      if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
   pages: {
