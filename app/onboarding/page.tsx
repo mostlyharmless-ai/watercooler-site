@@ -21,8 +21,13 @@ function OnboardingContent() {
   useEffect(() => {
     // Only redirect to login if we're sure the session is unauthenticated
     // Don't redirect while session is still loading
+    // Add a small delay to avoid race conditions with session establishment
     if (status === 'unauthenticated') {
-      router.push('/login');
+      console.log('[ONBOARDING] Session unauthenticated, redirecting to login');
+      const timer = setTimeout(() => {
+        router.push('/login');
+      }, 1000); // Small delay to allow session to establish
+      return () => clearTimeout(timer);
     }
   }, [status, router]);
 
@@ -55,9 +60,14 @@ function OnboardingContent() {
         if (response.ok) {
           const data = await response.json();
           if (data.onboardingCompleted) {
+            console.log('[ONBOARDING] Onboarding already completed, redirecting to dashboard');
             router.push('/dashboard');
             return;
+          } else {
+            console.log('[ONBOARDING] Onboarding not completed, staying on onboarding page');
           }
+        } else {
+          console.log('[ONBOARDING] No preferences found, staying on onboarding page');
         }
 
         // Check URL params for step (e.g., after GitHub redirect)

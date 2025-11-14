@@ -134,16 +134,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       
       // Allow relative callback URLs (most common case)
       if (url.startsWith('/')) {
-        // CRITICAL FIX: If NextAuth is redirecting to /dashboard but we passed /onboarding?step=2,
-        // it means NextAuth is ignoring our callbackUrl. We can't check user state here,
-        // but we can check if the URL is /dashboard and redirect to onboarding instead.
-        // The onboarding page will check if onboarding is complete and redirect to dashboard if needed.
-        if (url === '/dashboard') {
-          console.log('[AUTH] Intercepting /dashboard redirect - redirecting to onboarding instead');
-          const onboardingUrl = `${validBaseUrl}/onboarding`;
-          console.log('[AUTH] redirecting to onboarding (intercepted /dashboard):', onboardingUrl);
-          return onboardingUrl;
-        }
+        // CRITICAL FIX: Only intercept /dashboard redirects if they're coming from OAuth callback
+        // We can detect this by checking if the URL is exactly /dashboard (no query params)
+        // and it's not already /onboarding. The onboarding page will handle redirecting to
+        // dashboard if onboarding is complete, so we only intercept OAuth-initiated redirects.
+        // However, we can't easily distinguish OAuth redirects from other redirects.
+        // So we'll let /dashboard through, but ensure onboarding page handles it properly.
+        // Actually, let's NOT intercept - let the onboarding page handle the logic.
+        // If user goes to /dashboard directly and hasn't completed onboarding, middleware/dashboard will handle it.
         
         // Preserve the exact callback URL - don't override it
         const fullUrl = `${validBaseUrl}${url}`;
