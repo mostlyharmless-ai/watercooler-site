@@ -6,6 +6,7 @@ import { encryptToken, decryptToken } from './encryption';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
+  trustHost: true, // Trust the host header (important for Vercel)
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID || '',
@@ -30,26 +31,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, user }) {
       try {
-        if (session.user) {
+        if (session?.user) {
           // In NextAuth v5 with database sessions, user.id should be available
-          const userId = user?.id || (session.user as any).id;
+          // But we need to handle cases where user might be undefined
+          let userId: string | undefined;
+          
+          if (user?.id) {
+            userId = user.id;
+          } else if ((session.user as any)?.id) {
+            userId = (session.user as any).id;
+          } else if (session.user?.email) {
+            // Fallback: try to find user by email
+            const dbUser = await prisma.user.findUnique({
+              where: { email: session.user.email },
+              select: { id: true },
+            });
+            if (dbUser) {
+              userId = dbUser.id;
+            }
+          }
           
           if (userId) {
             (session.user as any).id = userId;
             // Fetch GitHub username from user record
-            const dbUser = await prisma.user.findUnique({
-              where: { id: userId },
-              select: { githubUsername: true, githubId: true },
-            });
-            if (dbUser) {
-              (session.user as any).githubUsername = dbUser.githubUsername;
-              (session.user as any).githubId = dbUser.githubId;
+            try {
+              const dbUser = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { githubUsername: true, githubId: true },
+              });
+              if (dbUser) {
+                (session.user as any).githubUsername = dbUser.githubUsername;
+                (session.user as any).githubId = dbUser.githubId;
+              }
+            } catch (dbError) {
+              // Non-critical: if we can't fetch GitHub info, continue without it
+              console.error('Error fetching GitHub info in session callback:', dbError);
             }
           }
         }
       } catch (error) {
         console.error('Error in session callback:', error);
-        // Return session even if there's an error
+        // Return session even if there's an error - don't break authentication
       }
       return session;
     },
