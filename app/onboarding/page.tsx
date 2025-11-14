@@ -21,7 +21,7 @@ function OnboardingContent() {
   useEffect(() => {
     // Only redirect to login if we're sure the session is unauthenticated
     // Don't redirect while session is still loading
-    if (status === 'unauthenticated' && status !== 'loading') {
+    if (status === 'unauthenticated') {
       router.push('/login');
     }
   }, [status, router]);
