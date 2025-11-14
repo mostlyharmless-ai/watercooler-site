@@ -104,7 +104,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         vercelUrl,
         isProduction: baseUrl === nextAuthUrl,
         urlType: typeof url,
-        urlLength: url?.length
+        urlLength: url?.length,
+        urlStartsWithSlash: url?.startsWith('/'),
+        urlIncludesOnboarding: url?.includes('onboarding'),
+        urlIncludesDashboard: url?.includes('dashboard'),
+        fullUrl: typeof url === 'string' && url.startsWith('/') ? `${baseUrl}${url}` : url
       });
       
       // CRITICAL FIX: If baseUrl is production (NEXTAUTH_URL) but we're on a preview deployment,
@@ -130,6 +134,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       
       // Allow relative callback URLs (most common case)
       if (url.startsWith('/')) {
+        // CRITICAL: If URL is /dashboard but we should be in onboarding, check if this is a new user
+        // This handles the case where NextAuth might be using a default redirect
+        // We'll let the onboarding page handle the redirect to dashboard if onboarding is complete
+        if (url === '/dashboard' && !url.includes('onboarding')) {
+          // Check if we should redirect to onboarding instead
+          // This is a heuristic - if the URL is just /dashboard without query params,
+          // and we're coming from a sign-in, we might want to go to onboarding first
+          // But we can't check user state here, so we'll preserve the URL
+          // The onboarding page will check and redirect if needed
+          console.log('[AUTH] WARNING: Redirecting to /dashboard - onboarding page should handle this');
+        }
+        
         // Preserve the exact callback URL - don't override it
         const fullUrl = `${validBaseUrl}${url}`;
         console.log('[AUTH] redirecting to callback URL:', fullUrl);
