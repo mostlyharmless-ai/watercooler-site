@@ -94,16 +94,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
     async redirect({ url, baseUrl }) {
-      console.log('[AUTH] redirect callback:', { url, baseUrl });
+      const nextAuthUrl = process.env.NEXTAUTH_URL;
+      const vercelUrl = process.env.VERCEL_URL;
       
-      // Ensure baseUrl has protocol (fallback to NEXTAUTH_URL if baseUrl is invalid)
-      const nextAuthUrl = process.env.NEXTAUTH_URL || baseUrl;
+      console.log('[AUTH] redirect callback:', { 
+        url, 
+        baseUrl, 
+        nextAuthUrl,
+        vercelUrl,
+        isProduction: baseUrl === nextAuthUrl
+      });
+      
+      // CRITICAL FIX: If baseUrl is production (NEXTAUTH_URL) but we're on a preview deployment,
+      // use VERCEL_URL instead. This prevents redirecting to production from preview deployments.
       let validBaseUrl = baseUrl;
       
-      // If baseUrl doesn't have protocol, use NEXTAUTH_URL or add https://
-      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-        validBaseUrl = nextAuthUrl || `https://${baseUrl}`;
+      // Check if baseUrl is production but we're on a preview deployment
+      if (vercelUrl && baseUrl === nextAuthUrl) {
+        // We're on a preview deployment but baseUrl is production - use preview URL
+        validBaseUrl = `https://${vercelUrl}`;
+        console.log('[AUTH] Overriding production baseUrl with preview URL:', validBaseUrl);
+      } else if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        // If baseUrl doesn't have protocol, try to construct it
+        if (vercelUrl) {
+          validBaseUrl = `https://${vercelUrl}`;
+        } else {
+          // Fallback: use NEXTAUTH_URL only if baseUrl is completely invalid
+          validBaseUrl = nextAuthUrl || `https://${baseUrl}`;
+        }
       }
+      
+      console.log('[AUTH] Using baseUrl:', validBaseUrl);
       
       // Allow relative callback URLs (most common case)
       if (url.startsWith('/')) {
@@ -126,6 +147,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (urlOrigin === baseOrigin) {
           console.log('[AUTH] redirecting to same origin:', url);
           return url;
+        } else {
+          // If different origin, convert to relative path if possible
+          const urlPath = new URL(url).pathname;
+          if (urlPath) {
+            const relativeUrl = `${validBaseUrl}${urlPath}`;
+            console.log('[AUTH] converting cross-origin to relative:', relativeUrl);
+            return relativeUrl;
+          }
         }
       } catch (error) {
         // If URL parsing fails, default to onboarding instead of root
