@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Container from './Container';
 import { urls, copy } from '@/lib/copy';
 import { Github } from 'lucide-react';
+import AuthButton from './AuthButton';
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -19,7 +20,9 @@ export default function Header() {
   return (
     <header className={`sticky top-0 z-40 backdrop-blur-xl backdrop-saturate-150 transition-all duration-300 ${isScrolled ? 'bg-surface/80 shadow-lg' : 'bg-background/60'}`} style={{ borderBottom: isScrolled ? '1px solid rgba(209, 213, 219, 0.3)' : 'none' }}>
       <Container className="flex items-center justify-between h-16">
-        <div className="font-semibold text-primary"></div>
+        <a href="/" className="font-semibold text-primary hover:text-accent transition-colors">
+          Watercooler
+        </a>
         <nav className="flex items-center gap-3 text-sm">
           <a 
             href={urls.github}
@@ -30,13 +33,7 @@ export default function Header() {
           >
             <Github className="w-4 h-4" />
           </a>
-          <a
-            href={urls.github}
-            className="inline-flex items-center rounded-lg bg-accent text-white px-5 py-2 font-medium hover:bg-accent-hover hover:scale-105 hover:shadow-xl no-underline transition-all shadow-md"
-            style={{ boxShadow: '0 4px 6px -1px rgba(13, 148, 136, 0.3), 0 2px 4px -1px rgba(13, 148, 136, 0.2)' }}
-          >
-            {copy.hero.primaryCta}
-          </a>
+          <AuthButton />
         </nav>
       </Container>
     </header>

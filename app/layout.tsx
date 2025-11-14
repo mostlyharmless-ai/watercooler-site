@@ -3,6 +3,7 @@ import { Inter, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import { seoConfig } from '@/lib/seo';
 import StructuredData from '@/components/StructuredData';
+import { SessionProvider } from '@/components/SessionProvider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -28,7 +29,9 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${ibmPlexMono.variable}`}>
       <body>
         <StructuredData />
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

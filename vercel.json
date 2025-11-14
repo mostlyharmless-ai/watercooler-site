@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm prisma generate && pnpm prisma migrate deploy && pnpm build",
+  "installCommand": "pnpm install"
+}
+
