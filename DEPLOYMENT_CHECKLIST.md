@@ -2,7 +2,7 @@
 
 **⚠️ IMPORTANT: This is an UPDATE to an existing Vercel deployment**
 
-The watercooler-site is already deployed at `watercooler-dev.com`. This checklist covers updating the existing deployment to add authentication, database, and dashboard features.
+The watercooler-site is already deployed at `watercoolerdev.com`. This checklist covers updating the existing deployment to add authentication, database, and dashboard features.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ The watercooler-site is already deployed at `watercooler-dev.com`. This checklis
 - [ ] Go to [Vercel Dashboard](https://vercel.com/dashboard)
 - [ ] Find the existing `watercooler-site` project (or `watercooler-landing`)
 - [ ] Verify it's connected to `mostlyharmless-ai/watercooler-site` repository
-- [ ] Note the current deployment URL (likely `watercooler-dev.com` or `watercooler-site.vercel.app`)
+- [ ] Note the current deployment URL (likely `watercoolerdev.com` or `watercooler-site.vercel.app`)
 
 ### 1.2 Update Build Configuration
 
@@ -61,25 +61,105 @@ The repository now includes `vercel.json` with:
 - [ ] **Note**: The site previously had no database/auth, so likely no env vars exist yet
 - [ ] Document any existing variables that might conflict with new ones
 
-## Phase 2: Database Setup (Vercel Postgres)
+## Phase 2: Database Setup (Postgres via Marketplace)
 
-### 2.1 Create Postgres Database
+**Note**: Vercel no longer offers direct Postgres. You'll use a marketplace provider.
+
+### 2.1 Choose Postgres Provider
+
+**Recommended Options:**
+
+**Option A: Neon (Recommended)**
+- ✅ Serverless Postgres
+- ✅ Free tier available (generous limits)
+- ✅ Easy integration with Vercel
+- ✅ Automatic connection string setup
+- ✅ Good performance and reliability
+
+**Option B: Supabase**
+- ✅ Postgres backend
+- ✅ Free tier available
+- ✅ Additional features (auth, storage, etc.)
+- ✅ Good developer experience
+
+**Option C: Prisma Postgres**
+- ✅ Instant Serverless Postgres
+- ✅ Optimized for Prisma
+- ✅ Good for Prisma-based projects
+
+**Recommendation**: Use **Neon** for simplicity and reliability.
+
+### 2.2 Create Database via Marketplace
 
 - [ ] In Vercel project dashboard, go to **Storage** tab
-- [ ] Click **Create Database**
-- [ ] Select **Postgres**
-- [ ] Choose region (closest to your users)
-- [ ] Select plan (Hobby plan is free for development)
-- [ ] Click **Create**
-- [ ] Wait for database provisioning (1-2 minutes)
+- [ ] Click **Create Database** or **Browse Storage**
+- [ ] Select **"Create New"** tab
+- [ ] Scroll to **"Marketplace Database Providers"** section
+- [ ] Click on **Neon** (or your chosen provider)
+- [ ] Follow the provider's setup flow:
+  - Sign in/up with the provider (if needed)
+  - Create a new database
+  - Choose region (closest to your users)
+  - **Important**: Leave **"Auth" toggle OFF** (disabled)
+    - Neon's Auth is their built-in authentication system
+    - We're using NextAuth.js with GitHub OAuth instead
+    - We don't need Neon's auth features
+  - Select plan (Free tier recommended for development)
+- [ ] Complete the integration setup
 
-### 2.2 Get Database Connection String
+### 2.3 Configure Database Connection
 
-- [ ] After database is created, go to **Storage** → Your database
-- [ ] Click on **.env.local** tab
-- [ ] Copy the `POSTGRES_URL` value
-- [ ] **Note**: Vercel automatically adds this as `DATABASE_URL` environment variable
+After creating the database, you'll see a "Configure [project-name]" modal:
+
+**Environments Section:**
+- [ ] Verify all three environments are checked:
+  - ✅ Development
+  - ✅ Preview  
+  - ✅ Production
+- [ ] **Keep all checked** - database should be available in all environments
+
+**Create Database Branch For Deployment:**
+- [ ] Leave both unchecked for now:
+  - Preview (unchecked)
+  - Production (unchecked)
+- [ ] **Note**: This is a Neon feature for separate database branches per environment. Not needed for initial setup.
+
+**Custom Prefix (IMPORTANT!):**
+- [ ] **Change the prefix from "STORAGE" to empty or "DATABASE"**
+  - Current default: `STORAGE_URL` (wrong - Prisma expects `DATABASE_URL`)
+  - **Action**: Clear the prefix field or set it to `DATABASE`
+  - This ensures the environment variable is named `DATABASE_URL` (what Prisma/NextAuth expects)
+- [ ] If you leave it as "STORAGE", you'll get `STORAGE_URL` and need to manually rename it later
+
+**Complete Connection:**
+- [ ] Click **"Connect"** button
+- [ ] Wait for connection to be established
+
+### 2.4 Verify Database Connection String
+
+- [ ] Go to **Settings** → **Environment Variables**
+- [ ] Verify `DATABASE_URL` appears (not `STORAGE_URL`)
+- [ ] Connection string format should be: `postgresql://user:password@host:port/database?sslmode=require`
+- [ ] Verify it's enabled for all three environments (Development, Preview, Production)
+
+**For Supabase:**
+- [ ] Go to Supabase project → Settings → Database
+- [ ] Copy the connection string (URI format)
+- [ ] Add as `DATABASE_URL` in Vercel environment variables
+
+**For Prisma Postgres:**
+- [ ] Connection string should be auto-provided
+- [ ] Verify it appears in Vercel environment variables
+
+### 2.4 Verify Database Connection
+
 - [ ] Verify `DATABASE_URL` appears in **Settings** → **Environment Variables**
+- [ ] Connection string format should be: `postgresql://user:password@host:port/database?sslmode=require`
+- [ ] Test connection locally (optional):
+  ```bash
+  # With DATABASE_URL in .env.local
+  pnpm prisma db pull  # Test connection
+  ```
 
 ## Phase 3: Environment Variables Configuration
 
@@ -102,11 +182,12 @@ openssl rand -base64 32
 Go to **Settings** → **Environment Variables** and add:
 
 - [ ] **`DATABASE_URL`**
-  - Value: Automatically set by Vercel Postgres (verify it exists)
+  - Value: From marketplace provider (Neon/Supabase/etc.) - may be auto-added or need manual setup
   - Environments: Production, Preview, Development
+  - **Note**: Provider may auto-add this, or you may need to copy from provider dashboard
 
 - [ ] **`NEXTAUTH_URL`**
-  - Value: Your production URL (e.g., `https://watercooler-dev.com` or `https://watercooler-site.vercel.app`)
+  - Value: Your production URL (e.g., `https://watercoolerdev.com` or `https://watercooler-site.vercel.app`)
   - Environments: Production, Preview, Development
   - **Note**: For preview deployments, Vercel provides `VERCEL_URL` automatically
 
@@ -144,10 +225,9 @@ Go to **Settings** → **Environment Variables** and add:
 - [ ] Click **New OAuth App**
 - [ ] Fill in the form:
   - **Application name**: `Watercooler`
-  - **Homepage URL**: Your production URL (e.g., `https://watercooler-dev.com`)
-  - **Authorization callback URL**: `https://your-domain.com/api/auth/callback/github`
-    - Replace `your-domain.com` with your actual domain
-    - For Vercel preview: `https://watercooler-site.vercel.app/api/auth/callback/github`
+  - **Homepage URL**: Your production URL: `https://watercoolerdev.com`
+  - **Authorization callback URL**: `https://watercoolerdev.com/api/auth/callback/github`
+    - **Note**: For preview deployments, use: `https://watercooler-site.vercel.app/api/auth/callback/github`
 - [ ] Click **Register application**
 
 ### 4.2 Get OAuth Credentials
@@ -190,13 +270,34 @@ pnpm prisma migrate deploy
   - `Running "prisma migrate deploy"`
   - No migration errors
 - [ ] Verify database tables exist:
-  - Connect to Vercel Postgres and check for tables:
+
+  **Option A: Using Prisma Studio (Recommended - Visual Browser Tool)**
+  ```bash
+  export DATABASE_URL="your-connection-string"
+  pnpm prisma studio
+  ```
+  - Opens browser at `http://localhost:5555`
+  - You'll see all tables listed in the left sidebar
+  - Verify these tables exist:
     - `User`
     - `Account`
     - `Session`
     - `VerificationToken`
     - `GitHubToken`
     - `UserPreferences`
+
+  **Option B: Using Neon Dashboard**
+  - Click **"Open in Neon"** button on Vercel Storage page
+  - In Neon dashboard, go to **SQL Editor**
+  - Run query: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';`
+  - Verify all 6 tables are listed
+
+  **Option C: Using psql (Command Line)**
+  ```bash
+  # Get connection string from Vercel Storage page (.env.local tab, click "Show secret")
+  psql "your-database-url"
+  \dt  # List all tables
+  ```
 
 ## Phase 6: Deploy Updated Site
 
@@ -233,7 +334,7 @@ Watch the build logs carefully - this is the first build with Prisma:
 
 ### 6.3 Verify Deployment
 
-- [ ] Site loads at production URL (`watercooler-dev.com`)
+- [ ] Site loads at production URL (`watercoolerdev.com`)
 - [ ] Landing page still works (existing functionality preserved)
 - [ ] New routes are accessible:
   - `/login` - Login page
@@ -241,7 +342,7 @@ Watch the build logs carefully - this is the first build with Prisma:
   - `/dashboard` - Dashboard (protected, requires auth)
   - `/onboarding` - Onboarding flow
 - [ ] No console errors in browser
-- [ ] Health check endpoint works: `https://watercooler-dev.com/api/health`
+- [ ] Health check endpoint works: `https://watercoolerdev.com/api/health`
 - [ ] Existing features (demo, quickstart, etc.) still function
 
 ## Phase 7: Testing Authentication Flow
@@ -281,14 +382,14 @@ Watch the build logs carefully - this is the first build with Prisma:
 
 ### 8.1 Domain Configuration
 
-**Note**: Domain `watercooler-dev.com` is already configured. Verify it's still active:
+**Note**: Domain `watercoolerdev.com` is already configured. Verify it's still active:
 
 - [ ] Go to **Settings** → **Domains**
-- [ ] Verify `watercooler-dev.com` is listed and active
+- [ ] Verify `watercoolerdev.com` is listed and active
 - [ ] Check SSL certificate status (should be active)
-- [ ] Update `NEXTAUTH_URL` environment variable to `https://watercooler-dev.com` (if not already set)
-- [ ] Update GitHub OAuth callback URL to `https://watercooler-dev.com/api/auth/callback/github`
-- [ ] Test domain resolves correctly: `curl -I https://watercooler-dev.com`
+- [ ] Update `NEXTAUTH_URL` environment variable to `https://watercoolerdev.com` (if not already set)
+- [ ] Update GitHub OAuth callback URL to `https://watercoolerdev.com/api/auth/callback/github`
+- [ ] Test domain resolves correctly: `curl -I https://watercoolerdev.com`
 
 ### 8.2 Security Checklist
 
@@ -296,7 +397,7 @@ Watch the build logs carefully - this is the first build with Prisma:
 - [ ] `NEXTAUTH_SECRET` is strong (32+ characters, random)
 - [ ] `ENCRYPTION_KEY` is strong (32+ characters, random)
 - [ ] GitHub OAuth secret is stored securely
-- [ ] Database connection uses SSL (Vercel Postgres default)
+- [ ] Database connection uses SSL (marketplace providers default to SSL)
 - [ ] HTTPS is enforced (Vercel default)
 - [ ] Session cookies are HttpOnly and Secure (NextAuth default)
 
@@ -357,8 +458,9 @@ Watch the build logs carefully - this is the first build with Prisma:
 
 **Issue**: "Connection refused"
 - **Solution**: Verify `DATABASE_URL` is correct
-- **Solution**: Check database is running in Vercel dashboard
+- **Solution**: Check database is running in provider dashboard (Neon/Supabase/etc.)
 - **Solution**: Verify database region matches deployment region
+- **Solution**: Check if database requires IP allowlisting (some providers do)
 
 **Issue**: "Table does not exist"
 - **Solution**: Run migrations manually: `pnpm prisma migrate deploy`
@@ -398,7 +500,7 @@ Before deploying the update, ensure:
 - [x] Code is committed and pushed to GitHub
 - [ ] Existing Vercel project is located and verified
 - [ ] Build configuration updated (vercel.json or package.json scripts)
-- [ ] Vercel Postgres database is created (NEW)
+- [ ] Postgres database is created via marketplace provider (NEW)
 - [ ] All NEW environment variables are set (6 required)
 - [ ] GitHub OAuth App is created and configured (NEW)
 - [ ] Preview deployment tested (recommended)
@@ -406,7 +508,7 @@ Before deploying the update, ensure:
 - [ ] Existing landing page functionality still works
 - [ ] NEW authentication flow works end-to-end
 - [ ] NEW dashboard loads and functions correctly
-- [ ] Domain `watercooler-dev.com` still resolves correctly
+- [ ] Domain `watercoolerdev.com` still resolves correctly
 - [ ] SSL certificate is active
 - [ ] Monitoring is set up
 
@@ -425,7 +527,7 @@ Before deploying the update, ensure:
 ### 🆕 Added (New Features)
 - Authentication system (GitHub OAuth)
 - User dashboard
-- Database (Vercel Postgres)
+- Database (Postgres via marketplace provider - Neon/Supabase/etc.)
 - User settings and preferences
 - Onboarding flow
 - MCP credential API
