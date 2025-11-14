@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Step1Welcome from '@/components/onboarding/Step1Welcome';
 import Step2GitHub from '@/components/onboarding/Step2GitHub';
 import Step3Dashboard from '@/components/onboarding/Step3Dashboard';
@@ -11,6 +11,7 @@ import Container from '@/components/Container';
 export default function OnboardingPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
@@ -35,6 +36,27 @@ export default function OnboardingPage() {
           const data = await response.json();
           if (data.onboardingCompleted) {
             router.push('/dashboard');
+            return;
+          }
+        }
+
+        // Check URL params for step (e.g., after GitHub redirect)
+        const stepParam = searchParams.get('step');
+        if (stepParam) {
+          const step = parseInt(stepParam, 10);
+          if (step >= 1 && step <= 3) {
+            setCurrentStep(step);
+          }
+        } else {
+          // Check if GitHub is already connected - if so, start at step 2
+          try {
+            const credentialsResponse = await fetch('/api/mcp/credentials');
+            if (credentialsResponse.ok) {
+              // GitHub is connected, advance to step 2
+              setCurrentStep(2);
+            }
+          } catch (error) {
+            // GitHub not connected yet, stay on step 1
           }
         }
       } catch (error) {

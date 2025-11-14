@@ -21,10 +21,20 @@ export default function Step2GitHub({ onNext }: Step2GitHubProps) {
 
   const checkGitHubConnection = async () => {
     try {
+      // First, try to sync the token (in case it's not synced yet)
+      await fetch('/api/auth/sync-token', { method: 'POST' }).catch(() => {
+        // Non-critical if sync fails
+      });
+
+      // Then check if credentials are available
       const response = await fetch('/api/mcp/credentials');
       if (response.ok) {
         setGithubConnected(true);
         setChecking(false);
+        // Auto-advance to next step when GitHub is connected
+        setTimeout(() => {
+          onNext();
+        }, 1000);
       } else {
         setGithubConnected(false);
         setChecking(false);
@@ -36,7 +46,8 @@ export default function Step2GitHub({ onNext }: Step2GitHubProps) {
   };
 
   const handleConnectGitHub = () => {
-    signIn('github', { callbackUrl: '/onboarding' });
+    // Redirect to onboarding with step 2 in the URL so we can restore state
+    signIn('github', { callbackUrl: '/onboarding?step=2' });
   };
 
   return (
