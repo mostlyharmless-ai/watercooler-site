@@ -86,9 +86,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         validBaseUrl = nextAuthUrl || `https://${baseUrl}`;
       }
       
-      // Allow relative callback URLs
+      // Allow relative callback URLs (most common case)
       if (url.startsWith('/')) {
-        return `${validBaseUrl}${url}`;
+        const fullUrl = `${validBaseUrl}${url}`;
+        // Ensure we're not redirecting to root if we have a specific callback
+        if (url !== '/' || url.includes('onboarding') || url.includes('dashboard') || url.includes('login')) {
+          return fullUrl;
+        }
+        // Default to onboarding if redirecting to root
+        return `${validBaseUrl}/onboarding`;
       }
       
       // Allow callback URLs on the same origin
@@ -99,11 +105,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return url;
         }
       } catch (error) {
-        // If URL parsing fails, just return the valid baseUrl
+        // If URL parsing fails, default to onboarding instead of root
         console.error('Error parsing URL in redirect callback:', error);
+        return `${validBaseUrl}/onboarding`;
       }
       
-      return validBaseUrl;
+      // Default to onboarding instead of root
+      return `${validBaseUrl}/onboarding`;
     },
   },
   pages: {

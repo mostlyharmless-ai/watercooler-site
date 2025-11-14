@@ -19,15 +19,27 @@ function OnboardingContent() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    // Only redirect to login if we're sure the session is unauthenticated
+    // Don't redirect while session is still loading
+    if (status === 'unauthenticated' && status !== 'loading') {
       router.push('/login');
     }
   }, [status, router]);
 
   useEffect(() => {
+    // Wait for session to be ready before checking onboarding
+    if (status === 'loading') {
+      return; // Don't do anything while session is loading
+    }
+
     // Check if onboarding is already completed and sync GitHub token
     const checkOnboarding = async () => {
       try {
+        // If no session after loading, don't proceed
+        if (!session) {
+          return;
+        }
+
         // First, sync the GitHub token from Account to GitHubToken table
         // Wait for this to complete before checking credentials
         const syncResponse = await fetch('/api/auth/sync-token', { method: 'POST' });
@@ -85,7 +97,7 @@ function OnboardingContent() {
     if (session) {
       checkOnboarding();
     }
-  }, [session, router, searchParams]);
+  }, [session, status, router, searchParams]);
 
   const handleNext = () => {
     if (currentStep < 3) {
@@ -112,16 +124,22 @@ function OnboardingContent() {
     }
   };
 
+  // Show loading while session is being established (especially after GitHub callback)
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-secondary">Loading...</div>
+        <div className="text-secondary">Loading session...</div>
       </div>
     );
   }
 
+  // If session is not available after loading, show nothing (will redirect to login)
   if (!session) {
-    return null;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-secondary">Redirecting to login...</div>
+      </div>
+    );
   }
 
   return (
