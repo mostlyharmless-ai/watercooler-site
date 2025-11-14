@@ -102,7 +102,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         baseUrl, 
         nextAuthUrl,
         vercelUrl,
-        isProduction: baseUrl === nextAuthUrl
+        isProduction: baseUrl === nextAuthUrl,
+        urlType: typeof url,
+        urlLength: url?.length
       });
       
       // CRITICAL FIX: If baseUrl is production (NEXTAUTH_URL) but we're on a preview deployment,
@@ -128,16 +130,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       
       // Allow relative callback URLs (most common case)
       if (url.startsWith('/')) {
+        // Preserve the exact callback URL - don't override it
         const fullUrl = `${validBaseUrl}${url}`;
-        // Ensure we're not redirecting to root if we have a specific callback
-        if (url !== '/' || url.includes('onboarding') || url.includes('dashboard') || url.includes('login')) {
-          console.log('[AUTH] redirecting to:', fullUrl);
-          return fullUrl;
-        }
-        // Default to onboarding if redirecting to root
-        const onboardingUrl = `${validBaseUrl}/onboarding`;
-        console.log('[AUTH] redirecting root to onboarding:', onboardingUrl);
-        return onboardingUrl;
+        console.log('[AUTH] redirecting to callback URL:', fullUrl);
+        return fullUrl;
       }
       
       // Allow callback URLs on the same origin
