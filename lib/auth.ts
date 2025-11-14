@@ -134,16 +134,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       
       // Allow relative callback URLs (most common case)
       if (url.startsWith('/')) {
-        // CRITICAL: If URL is /dashboard but we should be in onboarding, check if this is a new user
-        // This handles the case where NextAuth might be using a default redirect
-        // We'll let the onboarding page handle the redirect to dashboard if onboarding is complete
-        if (url === '/dashboard' && !url.includes('onboarding')) {
-          // Check if we should redirect to onboarding instead
-          // This is a heuristic - if the URL is just /dashboard without query params,
-          // and we're coming from a sign-in, we might want to go to onboarding first
-          // But we can't check user state here, so we'll preserve the URL
-          // The onboarding page will check and redirect if needed
-          console.log('[AUTH] WARNING: Redirecting to /dashboard - onboarding page should handle this');
+        // CRITICAL FIX: If NextAuth is redirecting to /dashboard but we passed /onboarding?step=2,
+        // it means NextAuth is ignoring our callbackUrl. We can't check user state here,
+        // but we can check if the URL is /dashboard and redirect to onboarding instead.
+        // The onboarding page will check if onboarding is complete and redirect to dashboard if needed.
+        if (url === '/dashboard') {
+          console.log('[AUTH] Intercepting /dashboard redirect - redirecting to onboarding instead');
+          const onboardingUrl = `${validBaseUrl}/onboarding`;
+          console.log('[AUTH] redirecting to onboarding (intercepted /dashboard):', onboardingUrl);
+          return onboardingUrl;
         }
         
         // Preserve the exact callback URL - don't override it
