@@ -97,7 +97,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const nextAuthUrl = process.env.NEXTAUTH_URL;
       const vercelUrl = process.env.VERCEL_URL;
       
-      console.log('[AUTH] redirect callback:', { 
+      // Log the raw parameters first
+      console.log('[AUTH] redirect callback - RAW URL:', url);
+      console.log('[AUTH] redirect callback - RAW baseUrl:', baseUrl);
+      console.log('[AUTH] redirect callback - NEXTAUTH_URL:', nextAuthUrl);
+      console.log('[AUTH] redirect callback - VERCEL_URL:', vercelUrl);
+      
+      // If URL is /dashboard and we're expecting onboarding, check if we should override
+      // This is a workaround for NextAuth not preserving callbackUrl
+      if (url === '/dashboard') {
+        console.log('[AUTH] WARNING: Received /dashboard in redirect - this might be a default');
+        console.log('[AUTH] Redirecting to /onboarding instead - onboarding page will handle completion check');
+        // Override to onboarding - the onboarding page will check if complete and redirect to dashboard
+        const onboardingUrl = baseUrl.startsWith('http') 
+          ? `${baseUrl}/onboarding`
+          : `https://${vercelUrl || baseUrl}/onboarding`;
+        console.log('[AUTH] Overriding /dashboard redirect to:', onboardingUrl);
+        return onboardingUrl;
+      }
+      
+      console.log('[AUTH] redirect callback - DETAILED:', { 
         url, 
         baseUrl, 
         nextAuthUrl,
