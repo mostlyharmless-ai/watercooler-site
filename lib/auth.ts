@@ -23,6 +23,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account, profile }) {
       // Return true to allow sign-in - we'll handle token storage in a separate callback
       // This prevents foreign key constraint issues
+      console.log('[AUTH] signIn callback:', { 
+        userId: user?.id, 
+        email: user?.email,
+        provider: account?.provider 
+      });
       return true;
     },
     async jwt({ token, account, profile, user }) {
@@ -32,6 +37,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, user }) {
       try {
+        console.log('[AUTH] session callback:', { 
+          hasSession: !!session, 
+          hasUser: !!user,
+          userId: user?.id,
+          email: session?.user?.email 
+        });
+        
         if (session?.user) {
           // In NextAuth v5 with database sessions, user.id should be available
           // But we need to handle cases where user might be undefined
@@ -66,17 +78,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               }
             } catch (dbError) {
               // Non-critical: if we can't fetch GitHub info, continue without it
-              console.error('Error fetching GitHub info in session callback:', dbError);
+              console.error('[AUTH] Error fetching GitHub info in session callback:', dbError);
             }
           }
+          
+          console.log('[AUTH] session callback result:', { 
+            userId: (session.user as any)?.id,
+            email: session.user?.email 
+          });
         }
       } catch (error) {
-        console.error('Error in session callback:', error);
+        console.error('[AUTH] Error in session callback:', error);
         // Return session even if there's an error - don't break authentication
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
+      console.log('[AUTH] redirect callback:', { url, baseUrl });
+      
       // Ensure baseUrl has protocol (fallback to NEXTAUTH_URL if baseUrl is invalid)
       const nextAuthUrl = process.env.NEXTAUTH_URL || baseUrl;
       let validBaseUrl = baseUrl;
@@ -91,10 +110,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const fullUrl = `${validBaseUrl}${url}`;
         // Ensure we're not redirecting to root if we have a specific callback
         if (url !== '/' || url.includes('onboarding') || url.includes('dashboard') || url.includes('login')) {
+          console.log('[AUTH] redirecting to:', fullUrl);
           return fullUrl;
         }
         // Default to onboarding if redirecting to root
-        return `${validBaseUrl}/onboarding`;
+        const onboardingUrl = `${validBaseUrl}/onboarding`;
+        console.log('[AUTH] redirecting root to onboarding:', onboardingUrl);
+        return onboardingUrl;
       }
       
       // Allow callback URLs on the same origin
@@ -102,16 +124,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const urlOrigin = new URL(url).origin;
         const baseOrigin = new URL(validBaseUrl).origin;
         if (urlOrigin === baseOrigin) {
+          console.log('[AUTH] redirecting to same origin:', url);
           return url;
         }
       } catch (error) {
         // If URL parsing fails, default to onboarding instead of root
-        console.error('Error parsing URL in redirect callback:', error);
-        return `${validBaseUrl}/onboarding`;
+        console.error('[AUTH] Error parsing URL in redirect callback:', error);
+        const onboardingUrl = `${validBaseUrl}/onboarding`;
+        console.log('[AUTH] redirecting to onboarding (fallback):', onboardingUrl);
+        return onboardingUrl;
       }
       
       // Default to onboarding instead of root
-      return `${validBaseUrl}/onboarding`;
+      const onboardingUrl = `${validBaseUrl}/onboarding`;
+      console.log('[AUTH] redirecting to onboarding (default):', onboardingUrl);
+      return onboardingUrl;
     },
   },
   pages: {

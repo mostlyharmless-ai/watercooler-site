@@ -9,9 +9,17 @@ import { encryptToken } from '@/lib/encryption';
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log('[SYNC-TOKEN] Starting token sync');
     const session = await auth();
     
+    console.log('[SYNC-TOKEN] Session check:', { 
+      hasSession: !!session, 
+      userId: session?.user?.id,
+      email: session?.user?.email 
+    });
+    
     if (!session?.user?.id) {
+      console.log('[SYNC-TOKEN] Unauthorized - no session or user.id');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -23,7 +31,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log('[SYNC-TOKEN] Account check:', { 
+      hasAccount: !!account,
+      hasToken: !!account?.access_token 
+    });
+
     if (!account || !account.access_token) {
+      console.log('[SYNC-TOKEN] GitHub account or token not found');
       return NextResponse.json({ error: 'GitHub account not found' }, { status: 404 });
     }
 
@@ -71,9 +85,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('[SYNC-TOKEN] Token synced successfully');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error syncing GitHub token:', error);
+    console.error('[SYNC-TOKEN] Error syncing GitHub token:', error);
     return NextResponse.json(
       { error: 'Failed to sync token' },
       { status: 500 }

@@ -9,7 +9,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
     
+    console.log('[MIDDLEWARE] Checking:', { path: request.nextUrl.pathname });
     const session = await auth();
+    console.log('[MIDDLEWARE] Session:', { 
+      hasSession: !!session, 
+      userId: session?.user?.id,
+      path: request.nextUrl.pathname 
+    });
     
     // Protect dashboard routes
     if (request.nextUrl.pathname.startsWith('/dashboard')) {
