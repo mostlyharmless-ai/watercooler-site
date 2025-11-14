@@ -3,24 +3,47 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  const session = await auth();
-  
-  // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    if (!session?.user?.id) {
+  try {
+    // Skip auth check for auth routes to avoid circular redirects
+    if (request.nextUrl.pathname.startsWith('/api/auth')) {
+      return NextResponse.next();
+    }
+    
+    const session = await auth();
+    
+    // Protect dashboard routes
+    if (request.nextUrl.pathname.startsWith('/dashboard')) {
+      // Allow access if session exists (even without user.id initially)
+      // The dashboard layout will handle redirecting if needed
+      if (!session) {
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+    }
+    
+    // Protect API routes
+    if (request.nextUrl.pathname.startsWith('/api/mcp') || 
+        request.nextUrl.pathname.startsWith('/api/user')) {
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+    
+    return NextResponse.next();
+  } catch (error) {
+    // Log error but don't block - let the route handle it
+    console.error('Middleware error:', error);
+    // For dashboard routes, redirect to login on error
+    if (request.nextUrl.pathname.startsWith('/dashboard')) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-  }
-  
-  // Protect API routes
-  if (request.nextUrl.pathname.startsWith('/api/mcp') || 
-      request.nextUrl.pathname.startsWith('/api/user')) {
-    if (!session?.user?.id) {
+    // For API routes, return 401
+    if (request.nextUrl.pathname.startsWith('/api/mcp') || 
+        request.nextUrl.pathname.startsWith('/api/user')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    // Otherwise, continue
+    return NextResponse.next();
   }
-  
-  return NextResponse.next();
 }
 
 export const config = {

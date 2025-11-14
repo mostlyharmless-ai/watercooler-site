@@ -7,6 +7,7 @@ import { encryptToken, decryptToken } from './encryption';
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
   trustHost: true, // Trust the host header (important for Vercel)
+  debug: process.env.NODE_ENV === 'development', // Enable debug in development
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID || '',
