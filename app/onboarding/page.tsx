@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Step1Welcome from '@/components/onboarding/Step1Welcome';
@@ -8,7 +8,10 @@ import Step2GitHub from '@/components/onboarding/Step2GitHub';
 import Step3Dashboard from '@/components/onboarding/Step3Dashboard';
 import Container from '@/components/Container';
 
-export default function OnboardingPage() {
+// Make this page dynamic (no static generation)
+export const dynamic = 'force-dynamic';
+
+function OnboardingContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -161,6 +164,18 @@ export default function OnboardingPage() {
         </div>
       </Container>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-secondary">Loading...</div>
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 }
 
