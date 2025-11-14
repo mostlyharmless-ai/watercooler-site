@@ -208,7 +208,7 @@ export default function SettingsPage() {
           {(session?.user as any)?.githubUsername && (
             <div className="flex justify-between">
               <span className="text-secondary">GitHub:</span>
-              <span className="text-primary">@{(session.user as any).githubUsername}</span>
+              <span className="text-primary">@{(session?.user as any).githubUsername}</span>
             </div>
           )}
         </div>
