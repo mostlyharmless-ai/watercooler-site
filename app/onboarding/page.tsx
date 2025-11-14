@@ -21,9 +21,15 @@ export default function OnboardingPage() {
   }, [status, router]);
 
   useEffect(() => {
-    // Check if onboarding is already completed
+    // Check if onboarding is already completed and sync GitHub token
     const checkOnboarding = async () => {
       try {
+        // First, sync the GitHub token from Account to GitHubToken table
+        await fetch('/api/auth/sync-token', { method: 'POST' }).catch((err) => {
+          console.error('Error syncing token (non-critical):', err);
+        });
+
+        // Then check onboarding status
         const response = await fetch('/api/user/preferences');
         if (response.ok) {
           const data = await response.json();
