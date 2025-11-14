@@ -29,9 +29,14 @@ function OnboardingContent() {
     const checkOnboarding = async () => {
       try {
         // First, sync the GitHub token from Account to GitHubToken table
-        await fetch('/api/auth/sync-token', { method: 'POST' }).catch((err) => {
-          console.error('Error syncing token (non-critical):', err);
-        });
+        // Wait for this to complete before checking credentials
+        const syncResponse = await fetch('/api/auth/sync-token', { method: 'POST' });
+        if (!syncResponse.ok) {
+          console.warn('Token sync failed, but continuing...');
+        }
+
+        // Small delay to ensure token is available
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Then check onboarding status
         const response = await fetch('/api/user/preferences');
@@ -49,17 +54,27 @@ function OnboardingContent() {
           const step = parseInt(stepParam, 10);
           if (step >= 1 && step <= 3) {
             setCurrentStep(step);
+            return; // Don't check credentials if step is explicitly set
           }
-        } else {
-          // Check if GitHub is already connected - if so, start at step 2
+        }
+
+        // Check if GitHub is already connected - if so, start at step 2
+        // Retry a few times in case token sync is still processing
+        let retries = 3;
+        while (retries > 0) {
           try {
             const credentialsResponse = await fetch('/api/mcp/credentials');
             if (credentialsResponse.ok) {
               // GitHub is connected, advance to step 2
               setCurrentStep(2);
+              return;
             }
           } catch (error) {
-            // GitHub not connected yet, stay on step 1
+            // Retry after a short delay
+            retries--;
+            if (retries > 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
         }
       } catch (error) {
@@ -70,7 +85,7 @@ function OnboardingContent() {
     if (session) {
       checkOnboarding();
     }
-  }, [session, router]);
+  }, [session, router, searchParams]);
 
   const handleNext = () => {
     if (currentStep < 3) {

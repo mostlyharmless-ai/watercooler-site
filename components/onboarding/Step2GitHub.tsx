@@ -22,9 +22,16 @@ export default function Step2GitHub({ onNext }: Step2GitHubProps) {
   const checkGitHubConnection = async () => {
     try {
       // First, try to sync the token (in case it's not synced yet)
-      await fetch('/api/auth/sync-token', { method: 'POST' }).catch(() => {
-        // Non-critical if sync fails
-      });
+      const syncResponse = await fetch('/api/auth/sync-token', { method: 'POST' });
+      if (!syncResponse.ok) {
+        // If sync fails, token might not be available yet
+        setGithubConnected(false);
+        setChecking(false);
+        return;
+      }
+
+      // Small delay to ensure token is persisted
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Then check if credentials are available
       const response = await fetch('/api/mcp/credentials');
