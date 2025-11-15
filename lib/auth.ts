@@ -173,8 +173,8 @@ export async function getGitHubToken(userId: string): Promise<{ accessToken: str
       return null;
     }
 
-    const accessToken = decryptToken(tokenRecord.accessToken);
-    const refreshToken = tokenRecord.refreshToken ? decryptToken(tokenRecord.refreshToken) : '';
+    const accessToken = decryptToken(tokenRecord.accessTokenEncrypted);
+    const refreshToken = tokenRecord.refreshTokenEncrypted ? decryptToken(tokenRecord.refreshTokenEncrypted) : '';
 
     return { accessToken, refreshToken };
   } catch (error) {

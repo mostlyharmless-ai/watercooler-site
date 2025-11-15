@@ -1,7 +1,7 @@
 import { handlers } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Wrap handlers with error logging
+// Wrap handlers with error logging to capture callback failures
 async function handleRequest(
   handler: (req: NextRequest) => Promise<Response>,
   req: NextRequest
