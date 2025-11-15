@@ -8,18 +8,20 @@ import { encryptToken, decryptToken } from './encryption';
 // Only override NEXTAUTH_URL if we're actually on a preview deployment
 // Check if VERCEL_URL exists AND is different from NEXTAUTH_URL
 const vercelUrl = process.env.VERCEL_URL;
+const vercelEnv = process.env.VERCEL_ENV;
 const originalNextAuthUrl = process.env.NEXTAUTH_URL || 'https://watercoolerdev.com';
 
 // Log configuration immediately - use console.error to ensure visibility in Vercel logs
 console.error('=== AUTH CONFIGURATION ===');
 console.error('[AUTH] NEXTAUTH_URL (original):', originalNextAuthUrl);
 console.error('[AUTH] VERCEL_URL:', vercelUrl || 'NOT SET');
+console.error('[AUTH] VERCEL_ENV:', vercelEnv || 'NOT SET');
 console.error('[AUTH] NODE_ENV:', process.env.NODE_ENV);
 console.error('[AUTH] GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? `${process.env.GITHUB_CLIENT_ID.substring(0, 8)}...` : 'NOT SET');
 
 // Only override for preview deployments
 let finalNextAuthUrl = originalNextAuthUrl;
-if (vercelUrl && originalNextAuthUrl) {
+if (vercelEnv === 'preview' && vercelUrl && originalNextAuthUrl) {
   try {
     const vercelOrigin = new URL(`https://${vercelUrl}`).origin;
     const nextAuthOrigin = new URL(originalNextAuthUrl).origin;
@@ -34,8 +36,12 @@ if (vercelUrl && originalNextAuthUrl) {
   } catch (error) {
     console.error('Error checking deployment type:', error);
   }
+} else if (vercelEnv === 'production') {
+  console.error('PRODUCTION DEPLOYMENT (VERCEL_ENV=production)');
+} else if (!vercelEnv) {
+  console.error('PRODUCTION DEPLOYMENT (no VERCEL_ENV set)');
 } else {
-  console.error('PRODUCTION DEPLOYMENT (no VERCEL_URL)');
+  console.error(`NON-PRODUCTION DEPLOYMENT (${vercelEnv}) - not overriding NEXTAUTH_URL`);
 }
 
 // Set the final URL
