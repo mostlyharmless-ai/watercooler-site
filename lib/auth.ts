@@ -10,6 +10,12 @@ import { encryptToken, decryptToken } from './encryption';
 const vercelUrl = process.env.VERCEL_URL;
 const vercelEnv = process.env.VERCEL_ENV;
 const originalNextAuthUrl = process.env.NEXTAUTH_URL || 'https://watercoolerdev.com';
+const authDebugEnabled = process.env.AUTH_DEBUG === '1';
+const authDebugLog = (...args: unknown[]) => {
+  if (authDebugEnabled) {
+    console.error(...args);
+  }
+};
 
 // Log configuration immediately - use console.error to ensure visibility in Vercel logs
 console.error('=== AUTH CONFIGURATION ===');
@@ -70,7 +76,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.error('[AUTH] signIn callback:', { 
+      authDebugLog('[AUTH] signIn callback:', { 
         userId: user?.id, 
         email: user?.email,
         provider: account?.provider 
@@ -121,7 +127,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // SIMPLIFIED: Don't intercept API routes
       const urlString = String(url);
       if (urlString.includes('/api/')) {
-        console.error('[AUTH] redirect: Allowing API route through:', urlString);
+            authDebugLog('[AUTH] redirect: Allowing API route through:', urlString);
         return url;
       }
       
@@ -130,7 +136,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const vercelUrl = process.env.VERCEL_URL;
       const nextAuthUrl = process.env.NEXTAUTH_URL;
       
-      console.error('[AUTH] redirect callback:', {
+      authDebugLog('[AUTH] redirect callback:', {
         url: urlString,
         baseUrl,
         nextAuthUrl,
@@ -140,7 +146,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // If URL is relative, make it absolute using baseUrl
       if (urlString.startsWith('/')) {
         const fullUrl = `${baseUrl}${urlString}`;
-        console.error('[AUTH] redirect: Returning full URL:', fullUrl);
+        authDebugLog('[AUTH] redirect: Returning full URL:', fullUrl);
         return fullUrl;
       }
       
@@ -149,17 +155,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const urlObj = new URL(urlString);
         const baseObj = new URL(baseUrl);
         if (urlObj.origin === baseObj.origin) {
-          console.error('[AUTH] redirect: Same origin, returning as-is:', urlString);
+          authDebugLog('[AUTH] redirect: Same origin, returning as-is:', urlString);
           return urlString;
         }
       } catch (error) {
         // URL parsing failed, return baseUrl as fallback
-        console.error('[AUTH] redirect: URL parsing failed, using baseUrl:', baseUrl);
+        authDebugLog('[AUTH] redirect: URL parsing failed, using baseUrl:', baseUrl);
         return baseUrl;
       }
       
       // Fallback to baseUrl
-      console.error('[AUTH] redirect: Fallback to baseUrl:', baseUrl);
+      authDebugLog('[AUTH] redirect: Fallback to baseUrl:', baseUrl);
       return baseUrl;
     },
   },

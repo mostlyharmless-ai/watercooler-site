@@ -188,7 +188,10 @@ function OnboardingContent() {
               <Step1Welcome onNext={handleNext} />
             )}
             {currentStep === 2 && (
-              <Step2GitHub onNext={handleNext} />
+              <Step2GitHub 
+                onNext={handleNext} 
+                sessionReady={status === 'authenticated'}
+              />
             )}
             {currentStep === 3 && (
               <Step3Dashboard onComplete={handleComplete} />

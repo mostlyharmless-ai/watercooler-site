@@ -6,20 +6,30 @@ import { signIn } from 'next-auth/react';
 
 interface Step2GitHubProps {
   onNext: () => void;
+  sessionReady: boolean;
 }
 
-export default function Step2GitHub({ onNext }: Step2GitHubProps) {
+export default function Step2GitHub({ onNext, sessionReady }: Step2GitHubProps) {
   const [githubConnected, setGithubConnected] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    if (!sessionReady) {
+      setChecking(true);
+      setGithubConnected(false);
+      return;
+    }
+
     checkGitHubConnection();
-    // Poll every 2 seconds to check if GitHub is connected
     const interval = setInterval(checkGitHubConnection, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [sessionReady]);
 
   const checkGitHubConnection = async () => {
+    if (!sessionReady) {
+      return;
+    }
+
     try {
       // First, try to sync the token (in case it's not synced yet)
       const syncResponse = await fetch('/api/auth/sync-token', { method: 'POST' });
@@ -47,8 +57,10 @@ export default function Step2GitHub({ onNext }: Step2GitHubProps) {
         setChecking(false);
       }
     } catch (error) {
-      setGithubConnected(false);
-      setChecking(false);
+      if (sessionReady) {
+        setGithubConnected(false);
+        setChecking(false);
+      }
     }
   };
 
