@@ -4,18 +4,26 @@ import GitHubProvider from 'next-auth/providers/github';
 import { prisma } from './db';
 import { encryptToken, decryptToken } from './encryption';
 
-// CRITICAL FIX: Override NEXTAUTH_URL for preview deployments
-// This ensures cookies and all Auth.js helpers use the correct domain
+// CRITICAL FIX: Handle preview deployments for cookies while keeping production callback URL
+// Save the original NEXTAUTH_URL (production) for OAuth callbacks
+// Override NEXTAUTH_URL to preview domain for cookies and session management
 const vercelUrl = process.env.VERCEL_URL;
-const nextAuthUrl = process.env.NEXTAUTH_URL;
-if (vercelUrl && nextAuthUrl) {
+const originalNextAuthUrl = process.env.NEXTAUTH_URL; // Save original (production) URL
+let productionCallbackUrl = originalNextAuthUrl; // Default to production
+
+if (vercelUrl && originalNextAuthUrl) {
   try {
     const vercelOrigin = new URL(`https://${vercelUrl}`).origin;
-    const nextAuthOrigin = new URL(nextAuthUrl).origin;
+    const nextAuthOrigin = new URL(originalNextAuthUrl).origin;
     if (vercelOrigin !== nextAuthOrigin) {
-      // We're on a preview deployment - override NEXTAUTH_URL
+      // We're on a preview deployment
+      // Keep production URL for OAuth callback (must match GitHub OAuth App)
+      productionCallbackUrl = originalNextAuthUrl;
+      // Override NEXTAUTH_URL for cookies/session (must match preview domain)
       process.env.NEXTAUTH_URL = `https://${vercelUrl}`;
-      console.error('[AUTH] Overriding NEXTAUTH_URL for preview deployment:', process.env.NEXTAUTH_URL);
+      console.error('[AUTH] Preview deployment detected:');
+      console.error('[AUTH] - Using production callback URL:', `${productionCallbackUrl}/api/auth/callback/github`);
+      console.error('[AUTH] - Using preview domain for cookies:', process.env.NEXTAUTH_URL);
     }
   } catch (error) {
     console.error('[AUTH] Error normalizing URLs for preview deployment:', error);
@@ -33,6 +41,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorization: {
         params: {
           scope: 'read:user user:email repo',
+          // CRITICAL: Force redirect_uri to always use production callback URL
+          // This allows preview deployments to work with a single GitHub OAuth App callback URL
+          // GitHub OAuth App only needs: https://watercoolerdev.com/api/auth/callback/github
+          redirect_uri: productionCallbackUrl 
+            ? `${productionCallbackUrl}/api/auth/callback/github`
+            : undefined,
         },
       },
     }),
