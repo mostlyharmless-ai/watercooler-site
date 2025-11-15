@@ -9,8 +9,9 @@ export default function SignupPage() {
   const router = useRouter();
 
   // Signup is the same as login - redirect to GitHub OAuth
+  // NextAuth v5 uses redirectTo instead of callbackUrl
   const handleSignup = () => {
-    signIn('github', { callbackUrl: '/onboarding' });
+    signIn('github', { redirectTo: '/onboarding' });
   };
 
   return (

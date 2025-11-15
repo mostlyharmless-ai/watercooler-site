@@ -21,10 +21,27 @@ export default function Step2GitHub({ onNext }: Step2GitHubProps) {
 
   const checkGitHubConnection = async () => {
     try {
+      // First, try to sync the token (in case it's not synced yet)
+      const syncResponse = await fetch('/api/auth/sync-token', { method: 'POST' });
+      if (!syncResponse.ok) {
+        // If sync fails, token might not be available yet
+        setGithubConnected(false);
+        setChecking(false);
+        return;
+      }
+
+      // Small delay to ensure token is persisted
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Then check if credentials are available
       const response = await fetch('/api/mcp/credentials');
       if (response.ok) {
         setGithubConnected(true);
         setChecking(false);
+        // Auto-advance to next step when GitHub is connected
+        setTimeout(() => {
+          onNext();
+        }, 1000);
       } else {
         setGithubConnected(false);
         setChecking(false);
@@ -36,7 +53,9 @@ export default function Step2GitHub({ onNext }: Step2GitHubProps) {
   };
 
   const handleConnectGitHub = () => {
-    signIn('github', { callbackUrl: '/onboarding' });
+    // Redirect to onboarding with step 2 in the URL so we can restore state
+    // NextAuth v5 uses redirectTo instead of callbackUrl
+    signIn('github', { redirectTo: '/onboarding?step=2' });
   };
 
   return (
