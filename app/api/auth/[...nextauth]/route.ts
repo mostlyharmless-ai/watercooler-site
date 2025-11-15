@@ -15,6 +15,13 @@ async function handleRequest(
     const response = await handler(req);
     console.error('[AUTH ROUTE] Response status:', response.status);
     
+    const setCookieHeader = response.headers.get('set-cookie');
+    if (setCookieHeader) {
+      console.error('[AUTH ROUTE] Set-Cookie header:', setCookieHeader);
+    } else {
+      console.error('[AUTH ROUTE] Set-Cookie header: none');
+    }
+    
     // Log redirect location if it's a redirect - this shows where NextAuth is sending the user
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');

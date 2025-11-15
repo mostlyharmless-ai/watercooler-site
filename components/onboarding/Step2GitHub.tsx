@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Github, CheckCircle, AlertCircle } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 
@@ -12,32 +12,52 @@ interface Step2GitHubProps {
 export default function Step2GitHub({ onNext, sessionReady }: Step2GitHubProps) {
   const [githubConnected, setGithubConnected] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryDelays = [0, 2000, 5000, 10000, 15000];
+
+  const clearRetryTimeout = () => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (!sessionReady) {
       setChecking(true);
       setGithubConnected(false);
+      setLastError(null);
+      clearRetryTimeout();
       return;
     }
-
-    checkGitHubConnection();
-    const interval = setInterval(checkGitHubConnection, 2000);
-    return () => clearInterval(interval);
+    setAttempt(0);
+    setLastError(null);
   }, [sessionReady]);
 
-  const checkGitHubConnection = async () => {
+  const scheduleRetry = useCallback(
+    (nextAttempt: number) => {
+      clearRetryTimeout();
+      const delay = retryDelays[Math.min(nextAttempt, retryDelays.length - 1)];
+      retryTimeoutRef.current = setTimeout(() => {
+        setAttempt(nextAttempt);
+      }, delay);
+    },
+    [retryDelays]
+  );
+
+  const checkGitHubConnection = useCallback(async () => {
     if (!sessionReady) {
       return;
     }
 
     try {
+      setChecking(true);
       // First, try to sync the token (in case it's not synced yet)
       const syncResponse = await fetch('/api/auth/sync-token', { method: 'POST' });
       if (!syncResponse.ok) {
-        // If sync fails, token might not be available yet
-        setGithubConnected(false);
-        setChecking(false);
-        return;
+        throw new Error('Waiting for GitHub token to sync');
       }
 
       // Small delay to ensure token is persisted
@@ -48,21 +68,33 @@ export default function Step2GitHub({ onNext, sessionReady }: Step2GitHubProps) 
       if (response.ok) {
         setGithubConnected(true);
         setChecking(false);
-        // Auto-advance to next step when GitHub is connected
+        setLastError(null);
+        clearRetryTimeout();
         setTimeout(() => {
           onNext();
         }, 1000);
       } else {
-        setGithubConnected(false);
-        setChecking(false);
+        throw new Error('Credentials not ready yet');
       }
     } catch (error) {
-      if (sessionReady) {
-        setGithubConnected(false);
-        setChecking(false);
+      setGithubConnected(false);
+      setChecking(false);
+      setLastError(error instanceof Error ? error.message : 'Still waiting for GitHub authorization');
+      const nextAttempt = attempt + 1;
+      if (nextAttempt < retryDelays.length) {
+        scheduleRetry(nextAttempt);
       }
     }
-  };
+  }, [attempt, onNext, retryDelays, scheduleRetry, sessionReady]);
+
+  useEffect(() => {
+    if (!sessionReady) {
+      return;
+    }
+    checkGitHubConnection();
+  }, [sessionReady, attempt, checkGitHubConnection]);
+
+  useEffect(() => () => clearRetryTimeout(), []);
 
   const handleConnectGitHub = () => {
     // Redirect to onboarding with step 2 in the URL so we can restore state
@@ -133,6 +165,11 @@ export default function Step2GitHub({ onNext, sessionReady }: Step2GitHubProps) 
             <p className="text-sm text-yellow-700">
               Please connect your GitHub account to continue.
             </p>
+            {lastError && (
+              <p className="text-xs text-yellow-600 mt-2">
+                {lastError} — retrying automatically.
+              </p>
+            )}
           </div>
 
           <button
@@ -147,4 +184,5 @@ export default function Step2GitHub({ onNext, sessionReady }: Step2GitHubProps) 
     </div>
   );
 }
+
 
