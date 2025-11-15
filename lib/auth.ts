@@ -4,26 +4,25 @@ import GitHubProvider from 'next-auth/providers/github';
 import { prisma } from './db';
 import { encryptToken, decryptToken } from './encryption';
 
-// CRITICAL FIX: Handle preview deployments for cookies while keeping production callback URL
-// Save the original NEXTAUTH_URL (production) for OAuth callbacks
-// Override NEXTAUTH_URL to preview domain for cookies and session management
+// CRITICAL FIX: Override NEXTAUTH_URL for preview deployments
+// This ensures cookies, callbacks, and all Auth.js helpers use the correct domain
+// The OAuth callback will land on the preview deployment, so we need the preview URL
+// IMPORTANT: You must add the preview deployment URL to your GitHub OAuth App's authorized callback URLs
 const vercelUrl = process.env.VERCEL_URL;
-const originalNextAuthUrl = process.env.NEXTAUTH_URL; // Save original (production) URL
-let productionCallbackUrl = originalNextAuthUrl; // Default to production
+const originalNextAuthUrl = process.env.NEXTAUTH_URL;
 
 if (vercelUrl && originalNextAuthUrl) {
   try {
     const vercelOrigin = new URL(`https://${vercelUrl}`).origin;
     const nextAuthOrigin = new URL(originalNextAuthUrl).origin;
     if (vercelOrigin !== nextAuthOrigin) {
-      // We're on a preview deployment
-      // Keep production URL for OAuth callback (must match GitHub OAuth App)
-      productionCallbackUrl = originalNextAuthUrl;
-      // Override NEXTAUTH_URL for cookies/session (must match preview domain)
+      // We're on a preview deployment - override NEXTAUTH_URL to preview domain
+      // This ensures OAuth callback lands on preview deployment and cookies are set correctly
       process.env.NEXTAUTH_URL = `https://${vercelUrl}`;
       console.error('[AUTH] Preview deployment detected:');
-      console.error('[AUTH] - Using production callback URL:', `${productionCallbackUrl}/api/auth/callback/github`);
-      console.error('[AUTH] - Using preview domain for cookies:', process.env.NEXTAUTH_URL);
+      console.error('[AUTH] - Overriding NEXTAUTH_URL to preview domain:', process.env.NEXTAUTH_URL);
+      console.error('[AUTH] - OAuth callback will be:', `${process.env.NEXTAUTH_URL}/api/auth/callback/github`);
+      console.error('[AUTH] - IMPORTANT: Add this callback URL to your GitHub OAuth App authorized callback URLs');
     }
   } catch (error) {
     console.error('[AUTH] Error normalizing URLs for preview deployment:', error);
@@ -41,12 +40,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorization: {
         params: {
           scope: 'read:user user:email repo',
-          // CRITICAL: Force redirect_uri to always use production callback URL
-          // This allows preview deployments to work with a single GitHub OAuth App callback URL
-          // GitHub OAuth App only needs: https://watercoolerdev.com/api/auth/callback/github
-          redirect_uri: productionCallbackUrl 
-            ? `${productionCallbackUrl}/api/auth/callback/github`
-            : undefined,
+          // Let NextAuth use NEXTAUTH_URL (already overridden to preview domain for preview deployments)
+          // This ensures OAuth callback lands on the same domain that initiated the request
+          // IMPORTANT: Add preview deployment URLs to GitHub OAuth App authorized callback URLs
         },
       },
     }),
@@ -128,18 +124,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async redirect({ url, baseUrl }) {
       // CRITICAL FIX #1: Don't intercept API routes - they should never go through redirect callback
       // This is the root cause of the loop - API routes were being redirected
+      
+      // Log what we're receiving to debug
+      const urlString = typeof url === 'string' ? url : String(url);
+      console.error('[AUTH] redirect callback - ENTRY - url type:', typeof url, 'url value:', urlString, 'baseUrl:', baseUrl);
+      
+      // First, check if url is a string and contains /api/ anywhere (most reliable check)
+      if (urlString.includes('/api/')) {
+        console.error('[AUTH] redirect callback - Allowing API route through (string contains /api/):', urlString);
+        return url; // Let API routes through unchanged
+      }
+      
+      // Also check pathname if we can parse it
       try {
-        const urlObj = new URL(url, baseUrl || 'http://localhost');
+        const urlObj = new URL(urlString, baseUrl || 'http://localhost');
         if (urlObj.pathname.startsWith('/api/')) {
-          console.error('[AUTH] redirect callback - Allowing API route through:', urlObj.pathname);
+          console.error('[AUTH] redirect callback - Allowing API route through (pathname check):', urlObj.pathname);
           return url; // Let API routes through unchanged
         }
       } catch (error) {
-        // If URL parsing fails, check if it starts with /api/ as a string
-        if (typeof url === 'string' && url.startsWith('/api/')) {
-          console.error('[AUTH] redirect callback - Allowing API route through (string check):', url);
-          return url;
-        }
+        // URL parsing failed - already handled by string check above
       }
       
       const nextAuthUrl = process.env.NEXTAUTH_URL;
