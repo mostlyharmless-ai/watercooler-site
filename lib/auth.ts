@@ -29,6 +29,18 @@ if (vercelUrl && originalNextAuthUrl) {
   }
 }
 
+// Log the final NEXTAUTH_URL being used (for debugging)
+const finalNextAuthUrl = process.env.NEXTAUTH_URL;
+const expectedCallbackUrl = finalNextAuthUrl 
+  ? `${finalNextAuthUrl}/api/auth/callback/github`
+  : 'NOT SET';
+console.error('[AUTH] Configuration:');
+console.error('[AUTH] - NEXTAUTH_URL:', finalNextAuthUrl);
+console.error('[AUTH] - Expected callback URL:', expectedCallbackUrl);
+console.error('[AUTH] - VERCEL_URL:', process.env.VERCEL_URL);
+console.error('[AUTH] - Environment:', process.env.NODE_ENV);
+console.error('[AUTH] - IMPORTANT: Verify this callback URL is registered in GitHub OAuth App');
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
   trustHost: true, // Trust the host header (important for Vercel)
