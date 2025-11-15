@@ -4,6 +4,24 @@ import GitHubProvider from 'next-auth/providers/github';
 import { prisma } from './db';
 import { encryptToken, decryptToken } from './encryption';
 
+// CRITICAL FIX: Override NEXTAUTH_URL for preview deployments
+// This ensures cookies and all Auth.js helpers use the correct domain
+const vercelUrl = process.env.VERCEL_URL;
+const nextAuthUrl = process.env.NEXTAUTH_URL;
+if (vercelUrl && nextAuthUrl) {
+  try {
+    const vercelOrigin = new URL(`https://${vercelUrl}`).origin;
+    const nextAuthOrigin = new URL(nextAuthUrl).origin;
+    if (vercelOrigin !== nextAuthOrigin) {
+      // We're on a preview deployment - override NEXTAUTH_URL
+      process.env.NEXTAUTH_URL = `https://${vercelUrl}`;
+      console.error('[AUTH] Overriding NEXTAUTH_URL for preview deployment:', process.env.NEXTAUTH_URL);
+    }
+  } catch (error) {
+    console.error('[AUTH] Error normalizing URLs for preview deployment:', error);
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
   trustHost: true, // Trust the host header (important for Vercel)
@@ -94,32 +112,67 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
     async redirect({ url, baseUrl }) {
+      // CRITICAL FIX #1: Don't intercept API routes - they should never go through redirect callback
+      // This is the root cause of the loop - API routes were being redirected
+      try {
+        const urlObj = new URL(url, baseUrl || 'http://localhost');
+        if (urlObj.pathname.startsWith('/api/')) {
+          console.error('[AUTH] redirect callback - Allowing API route through:', urlObj.pathname);
+          return url; // Let API routes through unchanged
+        }
+      } catch (error) {
+        // If URL parsing fails, check if it starts with /api/ as a string
+        if (typeof url === 'string' && url.startsWith('/api/')) {
+          console.error('[AUTH] redirect callback - Allowing API route through (string check):', url);
+          return url;
+        }
+      }
+      
       const nextAuthUrl = process.env.NEXTAUTH_URL;
       const vercelUrl = process.env.VERCEL_URL;
       
-      // Log the raw parameters first
-      console.log('[AUTH] redirect callback - RAW URL:', url);
-      console.log('[AUTH] redirect callback - RAW baseUrl:', baseUrl);
-      console.log('[AUTH] redirect callback - NEXTAUTH_URL:', nextAuthUrl);
-      console.log('[AUTH] redirect callback - VERCEL_URL:', vercelUrl);
+      // Log the raw parameters first - use console.error to ensure visibility
+      console.error('[AUTH] redirect callback - RAW URL:', url);
+      console.error('[AUTH] redirect callback - RAW baseUrl:', baseUrl);
+      console.error('[AUTH] redirect callback - NEXTAUTH_URL:', nextAuthUrl);
+      console.error('[AUTH] redirect callback - VERCEL_URL:', vercelUrl);
+      console.error('[AUTH] redirect callback - URL includes query params:', url.includes('?'));
+      console.error('[AUTH] redirect callback - Full URL string:', JSON.stringify(url));
       
-      // CRITICAL FIX: If baseUrl is production (NEXTAUTH_URL) but we're on a preview deployment,
-      // use VERCEL_URL instead. This prevents redirecting to production from preview deployments.
-      // Calculate validBaseUrl FIRST so we can use it for all redirects
+      // CRITICAL FIX #2: Normalize baseUrl comparison using origins (as Codex suggested)
+      // This ensures preview deployments always get the correct domain, even if URLs have
+      // different formats (trailing slashes, protocols, etc.)
       let validBaseUrl = baseUrl;
       
-      // Check if baseUrl is production but we're on a preview deployment
-      if (vercelUrl && baseUrl === nextAuthUrl) {
-        // We're on a preview deployment but baseUrl is production - use preview URL
-        validBaseUrl = `https://${vercelUrl}`;
-        console.log('[AUTH] Overriding production baseUrl with preview URL:', validBaseUrl);
-      } else if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-        // If baseUrl doesn't have protocol, try to construct it
-        if (vercelUrl) {
+      try {
+        const baseOrigin = new URL(baseUrl).origin;
+        const nextAuthOrigin = nextAuthUrl ? new URL(nextAuthUrl).origin : null;
+        const vercelOrigin = vercelUrl ? new URL(`https://${vercelUrl}`).origin : null;
+        
+        // If we're on a preview deployment (VERCEL_URL exists) and baseUrl matches production,
+        // override to use preview domain. Use origin comparison to handle format differences.
+        if (vercelOrigin && nextAuthOrigin && baseOrigin === nextAuthOrigin) {
           validBaseUrl = `https://${vercelUrl}`;
-        } else {
-          // Fallback: use NEXTAUTH_URL only if baseUrl is completely invalid
-          validBaseUrl = nextAuthUrl || `https://${baseUrl}`;
+          console.error('[AUTH] Overriding production baseUrl with preview URL (origin match):', validBaseUrl);
+        } else if (vercelOrigin && baseOrigin !== vercelOrigin) {
+          // If baseUrl doesn't match preview origin, use preview URL
+          validBaseUrl = `https://${vercelUrl}`;
+          console.error('[AUTH] Overriding baseUrl to preview URL (origin mismatch):', validBaseUrl);
+        }
+      } catch (error) {
+        // Fallback to string-based comparison if URL parsing fails
+        console.error('[AUTH] Error parsing URLs, using fallback comparison:', error);
+        if (vercelUrl && baseUrl === nextAuthUrl) {
+          validBaseUrl = `https://${vercelUrl}`;
+          console.error('[AUTH] Overriding production baseUrl with preview URL (fallback):', validBaseUrl);
+        } else if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+          // If baseUrl doesn't have protocol, try to construct it
+          if (vercelUrl) {
+            validBaseUrl = `https://${vercelUrl}`;
+          } else {
+            // Fallback: use NEXTAUTH_URL only if baseUrl is completely invalid
+            validBaseUrl = nextAuthUrl || `https://${baseUrl}`;
+          }
         }
       }
       
@@ -172,8 +225,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // If user goes to /dashboard directly and hasn't completed onboarding, middleware/dashboard will handle it.
         
         // Preserve the exact callback URL - don't override it
+        // NOTE: url should already include query parameters if they were in redirectTo
         const fullUrl = `${validBaseUrl}${url}`;
-        console.log('[AUTH] redirecting to callback URL:', fullUrl);
+        console.error('[AUTH] redirect callback - Returning full URL:', fullUrl);
+        console.error('[AUTH] redirect callback - URL has query params:', url.includes('?'));
         return fullUrl;
       }
       
