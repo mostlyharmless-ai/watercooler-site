@@ -6,7 +6,7 @@ import { encryptToken, decryptToken } from './encryption';
 
 // Production-only deployment: always use the canonical domain
 const originalNextAuthUrl = process.env.NEXTAUTH_URL || 'https://watercoolerdev.com';
-const authDebugEnabled = process.env.AUTH_DEBUG !== '0';
+const authDebugEnabled = process.env.AUTH_DEBUG === '1';
 const authDebugLog = (...args: unknown[]) => {
   if (authDebugEnabled) {
     console.error(...args);
