@@ -10,11 +10,12 @@ import { encryptToken, decryptToken } from './encryption';
 const vercelUrl = process.env.VERCEL_URL;
 const originalNextAuthUrl = process.env.NEXTAUTH_URL || 'https://watercoolerdev.com';
 
-// Log configuration immediately
+// Log configuration immediately - use console.error to ensure visibility in Vercel logs
 console.error('=== AUTH CONFIGURATION ===');
-console.error('NEXTAUTH_URL (original):', originalNextAuthUrl);
-console.error('VERCEL_URL:', vercelUrl || 'NOT SET');
-console.error('NODE_ENV:', process.env.NODE_ENV);
+console.error('[AUTH] NEXTAUTH_URL (original):', originalNextAuthUrl);
+console.error('[AUTH] VERCEL_URL:', vercelUrl || 'NOT SET');
+console.error('[AUTH] NODE_ENV:', process.env.NODE_ENV);
+console.error('[AUTH] GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? `${process.env.GITHUB_CLIENT_ID.substring(0, 8)}...` : 'NOT SET');
 
 // Only override for preview deployments
 let finalNextAuthUrl = originalNextAuthUrl;
@@ -41,10 +42,10 @@ if (vercelUrl && originalNextAuthUrl) {
 process.env.NEXTAUTH_URL = finalNextAuthUrl;
 
 const expectedCallbackUrl = `${finalNextAuthUrl}/api/auth/callback/github`;
-console.error('Final NEXTAUTH_URL:', finalNextAuthUrl);
-console.error('Expected callback URL:', expectedCallbackUrl);
-console.error('GitHub OAuth App should have:', expectedCallbackUrl);
-console.error('===========================');
+console.error('[AUTH] Final NEXTAUTH_URL:', finalNextAuthUrl);
+console.error('[AUTH] Expected callback URL:', expectedCallbackUrl);
+console.error('[AUTH] GitHub OAuth App should have:', expectedCallbackUrl);
+console.error('[AUTH] ===========================');
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
