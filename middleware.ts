@@ -26,14 +26,6 @@ export async function middleware(request: NextRequest) {
       }
     }
     
-    // Protect API routes
-    if (request.nextUrl.pathname.startsWith('/api/mcp') || 
-        request.nextUrl.pathname.startsWith('/api/user')) {
-      if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-    }
-    
     return NextResponse.next();
   } catch (error) {
     // Log error but don't block - let the route handle it
@@ -41,11 +33,6 @@ export async function middleware(request: NextRequest) {
     // For dashboard routes, redirect to login on error
     if (request.nextUrl.pathname.startsWith('/dashboard')) {
       return NextResponse.redirect(new URL('/login', request.url));
-    }
-    // For API routes, return 401
-    if (request.nextUrl.pathname.startsWith('/api/mcp') || 
-        request.nextUrl.pathname.startsWith('/api/user')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     // Otherwise, continue
     return NextResponse.next();
@@ -55,8 +42,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/api/mcp/:path*',
-    '/api/user/:path*',
   ],
 };
 
